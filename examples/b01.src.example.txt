@@ -1,0 +1,4 @@
+# block 01/10 · lines 0-99 · write tr/b01.zh.txt with the same keys; one ｜ per " | "
+0	Welcome back to the Official PlayStation Podcast. I'm your host, Sid Shuman.
+8-9	We're all here for you. I think we're going to talk just a lot about all the rich games that are coming out right now and | how much we've been playing them. We've been playing a lot.
+21-22	Yeah. Well, I | think they can fall in line. Oh, very good.

@@ -1,0 +1,10 @@
+# OpenAI-compatible chat endpoint. Override with DEEPSEEK_BASE_URL / DEEPSEEK_MODEL.
+# The API key is NOT stored here — set the DEEPSEEK_API_KEY secret.
+base_url: https://api.deepseek.com
+model: deepseek-flash
+temperature: 0.2
+# disabled sends thinking.type=disabled and reasoning_effort=none (no chain-of-thought).
+thinking: disabled
+# Off-peak (闲时) CNY per 1M tokens. Used only for the Actions cost estimate.
+price_input_per_mtok: 1
+price_output_per_mtok: 4

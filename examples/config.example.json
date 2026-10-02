@@ -1,0 +1,19 @@
+{
+  "show": "Official PlayStation Podcast",
+  "title": "September Selects",
+  "episode": "548",
+  "page_url": "https://blog.playstation.com/2026/09/25/official-playstation-podcast-episode-548-september-selects/",
+  "audio_url": "https://traffic.libsyn.com/playstation/Episode_548.mp3",
+  "audio_file": "work/episode.mp3",
+  "cover": "work/cover.jpg",
+  "workdir": "work",
+  "cues": "work/cues.json",
+  "chapters": "work/chapters.json",
+  "output": "out/PS_Podcast_548.html",
+  "variant": "S",
+  "audio_mode": "online",
+  "dynamic_ads": false,
+  "source_lang": "en",
+  "target_lang": "zh",
+  "speakers": "work/speakers.json"
+}

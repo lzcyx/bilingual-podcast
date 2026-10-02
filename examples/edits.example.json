@@ -1,0 +1,8 @@
+{
+ "04-007": {"en": "But I see \"Control,\" Juno Reactor... Juno Reactor instrumental."},
+ "08-016": {"split": [[1, "eh?", "^"], [0, "During the day you are fully human. You don't have any magic power from that."]]},
+ "11-030": {"drop": true},
+ "12-001": {"merge_prev": true},
+ "12-004": {"spk": "S1"},
+ "15-002": {"split": [[6, "first six words.", "", "S0"], [0, "rest of the line.", "", "S1"]]}
+}

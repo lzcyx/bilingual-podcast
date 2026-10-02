@@ -1,0 +1,8 @@
+[
+ ["\\bSid Schuman\\b", "Sid Shuman"],
+ ["\\bKristin\\b", "Kristen"],
+ ["\\bDon Walker\\b|\\bDawn Walker\\b", "Dawnwalker"],
+ ["\\bThieves?\\b", "Theve"],
+ ["\\b[Dd]ual ?[Ss]ense\\b", "DualSense"],
+ ["pspodcasts?\\s*(?:at\\s*)?sony\\s*\\.?\\s*com", "PSPodcast@sony.com"]
+]

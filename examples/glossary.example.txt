@@ -1,0 +1,7 @@
+# Episode glossary: source term -> target term used in the translation. Host/guest names stay in English.
+Sid Shuman / Kristen Zitani / Brett Elston / O'Dell Harmon Jr. -> keep English
+Official PlayStation Podcast -> PlayStation 官方播客
+Ace Combat 8: Wings of Theve -> 《空战奇兵 8 希孚之翼》 (official Chinese title)
+Silent Hill: Townfall -> 《寂静岭：小镇陷落》
+Control Resonant -> 《控制：共振》; Jesse Faden -> 杰西·法登
+Toem 2 -> 《TOEM 2》 (no official Chinese title: keep English in 《》)

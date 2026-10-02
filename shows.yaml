@@ -1,0 +1,25 @@
+# Podcasts to follow. Add or remove a block; the next run picks it up.
+# id is used in R2 paths and index.json. Keep it stable.
+min_duration_sec: 600
+shows:
+  - id: ignuk
+    name: IGN UK Podcast
+    rss: https://rss.pdrl.fm/6213a6/feeds.megaphone.fm/ignukpod
+  - id: beyond
+    name: Beyond (IGN)
+    rss: https://rss.pdrl.fm/a9cb78/feeds.megaphone.fm/ignbeyond
+  - id: nvc
+    name: Nintendo Voice Chat
+    rss: https://rss.pdrl.fm/52ee62/feeds.megaphone.fm/nvc
+  - id: unlocked
+    name: Unlocked (IGN)
+    rss: https://rss.pdrl.fm/6e460d/feeds.megaphone.fm/ignunlocked
+  - id: gamescoop
+    name: Game Scoop!
+    rss: https://rss.pdrl.fm/817ebc/feeds.megaphone.fm/gamescoop
+  - id: consolewatch
+    name: Next-Gen Console Watch
+    rss: https://feeds.megaphone.fm/ignconsolewatch
+  - id: opp
+    name: Official PlayStation Podcast
+    rss: https://playstation.libsyn.com/rss

@@ -156,6 +156,13 @@ class SchemaTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_chapters([{"i": 2, "tr": "x", "en": "y"}], 6)
 
+    def test_chapter_prompt_keeps_json_example(self):
+        from scripts.llm.chapters import SYSTEM
+        text = SYSTEM.format(lo=8, hi=20)
+        self.assertIn('{"chapters":', text)
+        self.assertIn("between 8 and 20 chapters", text)
+        self.assertNotIn("{lo}", text)
+
 
 class PublishTests(unittest.TestCase):
     def test_attempts_infra_and_index_order(self):

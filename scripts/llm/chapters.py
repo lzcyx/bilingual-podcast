@@ -15,7 +15,7 @@ from schema import chapter_bounds, fallback_chapters, validate_chapters  # noqa:
 SCRIPTS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SYSTEM = """You split one podcast episode into chapters for a bilingual player.
-Return JSON: {"chapters": [{"i": 0, "tr": "开场：……", "en": "Intro: ..."}]}
+Return JSON: {{"chapters": [{{"i": 0, "tr": "开场：……", "en": "Intro: ..."}}]}}
 Rules:
 - "i" is the index of the FIRST subtitle line of that chapter (the number in the first column). The first chapter MUST be i=0.
 - Indexes strictly increase and stay inside the episode.
@@ -58,36 +58,42 @@ def main():
     client = Client(usage_path=os.path.join(wd, "usage.jsonl"))
     last = ""
     chosen = None
-    system = SYSTEM.format(lo=lo, hi=hi)
-    for attempt in range(1, 4):
-        user = f"Episode length: {duration / 60:.1f} min. Aim for {lo}–{hi} chapters (around {target}).\n\nindex, time, speaker, text\n{body}"
-        if last:
-            user += f"\n\nPrevious chapters failed validation:\n{last[:2500]}\nReturn a corrected full list."
-        try:
-            text = client.chat(
-                [{"role": "system", "content": system}, {"role": "user", "content": user}],
-                step="chapters", temperature=0.3, json_mode=True, max_tokens=4096,
-                extra={"attempt": attempt})
-            chapters, warns = validate_chapters(parse_json_content(text), len(lines))
-            for w in warns[:15]:
-                print("  warn:", w, flush=True)
-            if not (lo <= len(chapters) <= hi) and not (len(lines) < lo):
-                last = f"got {len(chapters)} chapters, need {lo}–{hi}"
-                print(f"  chapters attempt {attempt}: {last}", flush=True)
-                continue
-            path = os.path.join(wd, "chapters.json")
-            json.dump(chapters, open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-            rc, log = _check(a.config)
-            print(log, flush=True)
-            if rc == 0:
-                chosen = chapters
-                break
-            last = log
-        except InfraError:
-            raise
-        except (LLMError, ValueError, Exception) as e:
-            last = str(e)
-            print(f"  chapters attempt {attempt}: {e}", flush=True)
+    try:
+        system = SYSTEM.format(lo=lo, hi=hi)
+    except Exception as e:
+        # A prompt bug must not throw away a finished transcription.
+        print(f"chapters: prompt error: {e}", flush=True)
+        system = ""
+    if system:
+        for attempt in range(1, 4):
+            user = f"Episode length: {duration / 60:.1f} min. Aim for {lo}–{hi} chapters (around {target}).\n\nindex, time, speaker, text\n{body}"
+            if last:
+                user += f"\n\nPrevious chapters failed validation:\n{last[:2500]}\nReturn a corrected full list."
+            try:
+                text = client.chat(
+                    [{"role": "system", "content": system}, {"role": "user", "content": user}],
+                    step="chapters", temperature=0.3, json_mode=True, max_tokens=4096,
+                    extra={"attempt": attempt})
+                chapters, warns = validate_chapters(parse_json_content(text), len(lines))
+                for w in warns[:15]:
+                    print("  warn:", w, flush=True)
+                if not (lo <= len(chapters) <= hi) and not (len(lines) < lo):
+                    last = f"got {len(chapters)} chapters, need {lo}–{hi}"
+                    print(f"  chapters attempt {attempt}: {last}", flush=True)
+                    continue
+                path = os.path.join(wd, "chapters.json")
+                json.dump(chapters, open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+                rc, log = _check(a.config)
+                print(log, flush=True)
+                if rc == 0:
+                    chosen = chapters
+                    break
+                last = log
+            except InfraError:
+                raise
+            except (LLMError, ValueError, Exception) as e:
+                last = str(e)
+                print(f"  chapters attempt {attempt}: {e}", flush=True)
     if chosen is None:
         print("chapters: model output did not pass --check; using even fallback chapters", flush=True)
         chosen = fallback_chapters(lines, target)

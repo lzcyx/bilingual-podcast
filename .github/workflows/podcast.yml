@@ -101,8 +101,8 @@ jobs:
           EPISODE_SPEC: ${{ toJson(matrix.episode) }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: python scripts/build_episode.py
-      - name: Save models after a successful build
-        if: success() && steps.model-cache.outputs.cache-hit != 'true'
+      - name: Save models after they have been downloaded
+        if: always() && steps.model-cache.outputs.cache-hit == 'false'
         continue-on-error: true
         uses: actions/cache/save@v4
         with:

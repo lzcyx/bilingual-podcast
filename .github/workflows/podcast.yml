@@ -74,15 +74,6 @@ jobs:
           python-version: "3.11"
           cache: pip
           cache-dependency-path: requirements.txt
-      - name: Restore Whisper and diarization models
-        id: model-cache
-        if: success()
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            ~/.cache/huggingface
-            ~/.cache/podcast-bilingual-player
-          key: models-${{ runner.os }}-whisper-large-v3-turbo-diar-v1
       - name: Check required secrets
         env:
           EPISODE_SPEC: ${{ toJson(matrix.episode) }}
@@ -101,15 +92,6 @@ jobs:
           EPISODE_SPEC: ${{ toJson(matrix.episode) }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: python scripts/build_episode.py
-      - name: Save models after they have been downloaded
-        if: always() && steps.model-cache.outputs.cache-hit == 'false'
-        continue-on-error: true
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            ~/.cache/huggingface
-            ~/.cache/podcast-bilingual-player
-          key: ${{ steps.model-cache.outputs.cache-primary-key }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:

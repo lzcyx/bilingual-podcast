@@ -1,1 +1,89 @@
-[]
+[
+  {
+    "show_id": "consolewatch",
+    "guid": "8f37e0ba-bc4d-11f1-95e0-bf8e4c107da9",
+    "show": "Next-Gen Console Watch",
+    "title": "8 Years Isn't Enough: Why This Console Generation Needs to Be Longer - Next-Gen Console Watch",
+    "episode": "",
+    "pub_date": "2026-10-02T19:00:00+00:00",
+    "duration_sec": 1252,
+    "audio_mode": "offline",
+    "dynamic_ads": true,
+    "html_url": "https://lzcyx.github.io/bilingual-podcast/episodes/consolewatch/2026-10-03-8-years-isn-t-enough-why-this-console-generation-needs-to-be-longer-ne.html",
+    "cover_url": "https://lzcyx.github.io/bilingual-podcast/covers/consolewatch/2026-10-03-8-years-isn-t-enough-why-this-console-generation-needs-to-be-longer-ne.jpg",
+    "size_bytes": 6907393,
+    "speakers": [
+      "Ad",
+      "Daemon",
+      "Max",
+      "Ryan"
+    ],
+    "created_at": "2026-10-02T21:39:16.677642+00:00",
+    "archived": false
+  },
+  {
+    "show_id": "opp",
+    "guid": "723710fd-0423-4638-8b4f-2a0ecb0fab27",
+    "show": "Official PlayStation Podcast",
+    "title": "Friendly Ghosts",
+    "episode": "549",
+    "pub_date": "2026-10-02T17:34:00+00:00",
+    "duration_sec": 3439,
+    "audio_mode": "online",
+    "dynamic_ads": false,
+    "html_url": "https://lzcyx.github.io/bilingual-podcast/episodes/opp/2026-10-03-episode-549-friendly-ghosts.html",
+    "cover_url": "https://lzcyx.github.io/bilingual-podcast/covers/opp/2026-10-03-episode-549-friendly-ghosts.jpg",
+    "size_bytes": 235379,
+    "speakers": [
+      "Tim Turi",
+      "Kristen Zitani",
+      "Atsu",
+      "Ad",
+      "Erika Ishii"
+    ],
+    "created_at": "2026-10-02T21:39:16.677642+00:00",
+    "archived": false
+  },
+  {
+    "show_id": "gamescoop",
+    "guid": "0cf189c4-be7f-11f1-bc31-739e0c514be3",
+    "show": "Game Scoop!",
+    "title": "Games of Our Lives, Pt. 2",
+    "episode": "873",
+    "pub_date": "2026-10-02T16:40:00+00:00",
+    "duration_sec": 4762,
+    "audio_mode": "offline",
+    "dynamic_ads": true,
+    "html_url": "https://lzcyx.github.io/bilingual-podcast/episodes/gamescoop/2026-10-03-game-scoop-873-games-of-our-lives-pt-2.html",
+    "cover_url": "https://lzcyx.github.io/bilingual-podcast/covers/gamescoop/2026-10-03-game-scoop-873-games-of-our-lives-pt-2.jpg",
+    "size_bytes": 25858425,
+    "speakers": [
+      "Ad",
+      "Daemon Hatfield",
+      "Sam Claiborn"
+    ],
+    "created_at": "2026-10-02T21:39:16.677642+00:00",
+    "archived": false
+  },
+  {
+    "show_id": "ignuk",
+    "guid": "b394abe4-b8ee-11f1-bb43-0b13ebfe32cf",
+    "show": "IGN UK Podcast",
+    "title": "The Big Silent Hill: Townfall Chat",
+    "episode": "867",
+    "pub_date": "2026-09-25T14:45:00+00:00",
+    "duration_sec": 3625,
+    "audio_mode": "offline",
+    "dynamic_ads": true,
+    "html_url": "https://lzcyx.github.io/bilingual-podcast/episodes/ignuk/2026-09-25-ign-uk-podcast-867-the-big-silent-hill-townfall-chat.html",
+    "cover_url": "https://lzcyx.github.io/bilingual-podcast/covers/ignuk/2026-09-25-ign-uk-podcast-867-the-big-silent-hill-townfall-chat.jpg",
+    "size_bytes": 19613660,
+    "speakers": [
+      "Dale",
+      "Ad",
+      "Lauren"
+    ],
+    "created_at": "2026-10-02T15:54:06.332707+00:00",
+    "archived": false
+  }
+]

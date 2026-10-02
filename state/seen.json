@@ -7105,6 +7105,15 @@
       "reason": "bootstrap",
       "marked_at": "2026-10-02T13:12:09.398216+00:00"
     },
+    "consolewatch\t8f37e0ba-bc4d-11f1-95e0-bf8e4c107da9": {
+      "show_id": "consolewatch",
+      "guid": "8f37e0ba-bc4d-11f1-95e0-bf8e4c107da9",
+      "title": "8 Years Isn't Enough: Why This Console Generation Needs to Be Longer - Next-Gen Console Watch",
+      "pub_date": "2026-10-02T19:00:00+00:00",
+      "reason": "published",
+      "marked_at": "2026-10-02T21:39:16.677642+00:00",
+      "slug": "2026-10-03-8-years-isn-t-enough-why-this-console-generation-needs-to-be-longer-ne"
+    },
     "consolewatch\t90c61f64-94b7-11f0-b779-27ad2969c0f7": {
       "show_id": "consolewatch",
       "guid": "90c61f64-94b7-11f0-b779-27ad2969c0f7",
@@ -7720,6 +7729,15 @@
       "pub_date": "2022-12-02T19:52:57+00:00",
       "reason": "bootstrap",
       "marked_at": "2026-10-02T13:12:09.398216+00:00"
+    },
+    "gamescoop\t0cf189c4-be7f-11f1-bc31-739e0c514be3": {
+      "show_id": "gamescoop",
+      "guid": "0cf189c4-be7f-11f1-bc31-739e0c514be3",
+      "title": "Game Scoop! 873: Games of Our Lives, Pt. 2",
+      "pub_date": "2026-10-02T16:40:00+00:00",
+      "reason": "published",
+      "marked_at": "2026-10-02T21:39:16.677642+00:00",
+      "slug": "2026-10-03-game-scoop-873-games-of-our-lives-pt-2"
     },
     "gamescoop\t0d5d578f-13e2-4459-bd61-d4c8c0f1efda": {
       "show_id": "gamescoop",
@@ -17609,6 +17627,15 @@
       "reason": "bootstrap",
       "marked_at": "2026-10-02T13:12:09.398216+00:00"
     },
+    "ignuk\tb394abe4-b8ee-11f1-bb43-0b13ebfe32cf": {
+      "show_id": "ignuk",
+      "guid": "b394abe4-b8ee-11f1-bb43-0b13ebfe32cf",
+      "title": "IGN UK Podcast 867: The Big Silent Hill: Townfall Chat",
+      "pub_date": "2026-09-25T14:45:00+00:00",
+      "reason": "published",
+      "marked_at": "2026-10-02T21:39:16.677642+00:00",
+      "slug": "2026-09-25-ign-uk-podcast-867-the-big-silent-hill-townfall-chat"
+    },
     "ignuk\tb3c2766c-ccd5-11ee-ad88-278bbfb068de": {
       "show_id": "ignuk",
       "guid": "b3c2766c-ccd5-11ee-ad88-278bbfb068de",
@@ -26640,6 +26667,15 @@
       "pub_date": "2025-05-09T16:45:00+00:00",
       "reason": "bootstrap",
       "marked_at": "2026-10-02T13:12:09.398216+00:00"
+    },
+    "opp\t723710fd-0423-4638-8b4f-2a0ecb0fab27": {
+      "show_id": "opp",
+      "guid": "723710fd-0423-4638-8b4f-2a0ecb0fab27",
+      "title": "Episode 549: Friendly Ghosts",
+      "pub_date": "2026-10-02T17:34:00+00:00",
+      "reason": "published",
+      "marked_at": "2026-10-02T21:39:16.677642+00:00",
+      "slug": "2026-10-03-episode-549-friendly-ghosts"
     },
     "opp\t72723621-1d01-42d9-97b9-884385c95de4": {
       "show_id": "opp",

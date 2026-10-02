@@ -1,14 +1,3 @@
 {
-  "items": {
-    "ignuk\tb394abe4-b8ee-11f1-bb43-0b13ebfe32cf": {
-      "show_id": "ignuk",
-      "guid": "b394abe4-b8ee-11f1-bb43-0b13ebfe32cf",
-      "title": "IGN UK Podcast 867: The Big Silent Hill: Townfall Chat",
-      "pub_date": "2026-09-25T14:45:00+00:00",
-      "attempts": 1,
-      "abandoned": false,
-      "last_error": "exit 1: chapters.py",
-      "last_at": "2026-10-02T14:15:09.234783+00:00"
-    }
-  }
+  "items": {}
 }

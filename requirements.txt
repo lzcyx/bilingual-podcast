@@ -7,4 +7,3 @@ sherpa-onnx>=1.10.28      # speaker diarization (public pyannote-segmentation + 
 playwright>=1.40          # then: python -m playwright install chromium   (or pass --chrome /usr/bin/google-chrome)
 
 pyyaml>=6.0           # shows.yaml / llm.yaml
-boto3>=1.34           # Cloudflare R2 (S3-compatible) publish step

@@ -257,6 +257,8 @@ def main():
         draft["cues"] = os.path.abspath(os.path.join(wd, "cues.json"))
         draft["chapters"] = os.path.abspath(os.path.join(wd, "chapters.json"))
         draft["workdir"] = os.path.abspath(wd)
+        # Offline embed is 32 kbps mono (~16 MB per hour). Online episodes ignore this.
+        draft["embed_kbps"] = 32
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(draft, f, ensure_ascii=False, indent=2)
             f.write("\n")

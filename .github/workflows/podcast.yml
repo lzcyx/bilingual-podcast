@@ -87,11 +87,6 @@ jobs:
         env:
           EPISODE_SPEC: ${{ toJson(matrix.episode) }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
-          R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
         run: python scripts/check_secrets.py
       - name: Install ffmpeg, Python deps, Chromium
         if: success()
@@ -148,20 +143,40 @@ jobs:
         with:
           pattern: ep-*
           path: run/results
-      - name: Publish to R2 and write state
-        id: publish
-        continue-on-error: true
-        env:
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
-          R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+      - name: Fetch current site
         run: |
-          pip install pyyaml boto3
-          python scripts/publish.py --plan run/plan/plan.json --results run/results
+          mkdir -p site-prev
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            git fetch --depth 1 origin gh-pages
+            git archive FETCH_HEAD | tar -x -C site-prev
+          else
+            echo "gh-pages does not exist yet"
+          fi
+      - name: Stage site
+        id: stage
+        env:
+          PAGES_BASE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+        run: |
+          pip install pyyaml
+          python scripts/publish.py stage --plan run/plan/plan.json --results run/results --prev site-prev --out site-dist
+      - name: Push gh-pages
+        id: pages
+        if: steps.stage.outputs.changed == 'true'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site-dist
+          force_orphan: true
+          commit_message: "Publish site"
+      - name: Mark published episodes
+        if: steps.stage.outputs.changed == 'true' && steps.pages.outcome == 'success'
+        env:
+          PAGES_BASE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python scripts/publish.py ack
       - name: Commit state
-        if: always()
+        if: always() && steps.stage.outcome == 'success'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -173,5 +188,5 @@ jobs:
             git push
           fi
       - name: Fail the job if publish failed
-        if: steps.publish.outcome == 'failure'
+        if: steps.stage.outputs.problems == 'true' || steps.pages.outcome == 'failure'
         run: exit 1

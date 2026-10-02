@@ -1,6 +1,9 @@
 # Podcasts to follow. Add or remove a block; the next run picks it up.
-# id is used in R2 paths and index.json. Keep it stable.
+# id is used in site paths and index.json. Keep it stable.
+# keep_days: offline players older than this are removed from the site.
+# The index row stays, with "archived": true. Online players are kept.
 min_duration_sec: 600
+keep_days: 60
 shows:
   - id: ignuk
     name: IGN UK Podcast

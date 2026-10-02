@@ -8,6 +8,7 @@ import json
 import os
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from client import Client, InfraError, LLMError, parse_json_content  # noqa: E402
@@ -15,6 +16,8 @@ from client import Client, InfraError, LLMError, parse_json_content  # noqa: E40
 SCRIPTS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, SCRIPTS)
 import tr_check  # noqa: E402
+
+MAX_WORKERS = 4
 
 
 SYSTEM = """You translate one block of an English podcast into spoken simplified Chinese.
@@ -87,10 +90,49 @@ def _check(workdir, stem) -> tuple[int, str]:
     return p.returncode, log
 
 
+def _translate_block(client, wd, sp, lang, glossary):
+    stem = os.path.basename(sp).replace(".src.txt", "")
+    src_map, _ = tr_check.parse(sp)
+    body = open(sp, encoding="utf-8").read()
+    dest = sp.replace(".src.txt", f".{lang}.txt")
+    errors = ""
+    for attempt in range(1, 4):
+        user = f"Glossary:\n{glossary or '(none)'}\n\nSource block:\n{body}"
+        if errors:
+            user += f"\n\nYour previous output failed checks. Fix every error and return the full JSON again:\n{errors[:2500]}"
+        try:
+            text = client.chat(
+                [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}],
+                step="translate", temperature=0.2, json_mode=True, max_tokens=8192,
+                extra={"block": stem, "attempt": attempt})
+            rendered = _render(parse_json_content(text), src_map)
+            with open(dest, "w", encoding="utf-8") as f:
+                f.write(rendered)
+            rc, log = _check(wd, stem)
+            print(log, end="" if log.endswith("\n") or not log else "\n", flush=True)
+            if rc == 0:
+                return {"stem": stem, "ok": True}
+            errors = log
+        except InfraError:
+            raise
+        except (LLMError, Exception) as e:
+            errors = str(e)
+            print(f"  {stem} attempt {attempt}: {e}", flush=True)
+    print(f"  {stem}: still failing after 3 tries; marking lines ［未译］", flush=True)
+    with open(dest, "w", encoding="utf-8") as f:
+        f.write(_marker(src_map))
+    rc, log = _check(wd, stem)
+    print(log, flush=True)
+    if rc != 0:
+        raise SystemExit(f"{stem}: marker file still fails tr_check\n{log}")
+    return {"stem": stem, "ok": False}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--workdir", default="work")
     ap.add_argument("--lang", default="zh")
+    ap.add_argument("--jobs", type=int, default=MAX_WORKERS)
     a = ap.parse_args()
     wd = a.workdir
     srcs = sorted(glob.glob(os.path.join(wd, "tr", "b*.src.txt")))
@@ -101,45 +143,28 @@ def main():
     if os.path.exists(gpath):
         glossary = open(gpath, encoding="utf-8").read()[:8000]
     client = Client(usage_path=os.path.join(wd, "usage.jsonl"))
+    workers = max(1, min(a.jobs, MAX_WORKERS))
     failed_blocks = []
     real_blocks = 0
+    outcomes = {}
+    ex = ThreadPoolExecutor(max_workers=workers)
+    try:
+        futs = {ex.submit(_translate_block, client, wd, sp, a.lang, glossary): sp for sp in srcs}
+        for fut in as_completed(futs):
+            try:
+                item = fut.result()
+            except InfraError:
+                ex.shutdown(wait=False, cancel_futures=True)
+                raise
+            outcomes[item["stem"]] = item
+    finally:
+        ex.shutdown(wait=True)
     for sp in srcs:
         stem = os.path.basename(sp).replace(".src.txt", "")
-        src_map, _ = tr_check.parse(sp)
-        body = open(sp, encoding="utf-8").read()
-        dest = sp.replace(".src.txt", f".{a.lang}.txt")
-        errors = ""
-        ok = False
-        for attempt in range(1, 4):
-            user = f"Glossary:\n{glossary or '(none)'}\n\nSource block:\n{body}"
-            if errors:
-                user += f"\n\nYour previous output failed checks. Fix every error and return the full JSON again:\n{errors[:2500]}"
-            try:
-                text = client.chat(
-                    [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}],
-                    step="translate", temperature=0.2, json_mode=True, max_tokens=8192,
-                    extra={"block": stem, "attempt": attempt})
-                rendered = _render(parse_json_content(text), src_map)
-                open(dest, "w", encoding="utf-8").write(rendered)
-                rc, log = _check(wd, stem)
-                print(log, end="" if log.endswith("\n") or not log else "\n", flush=True)
-                if rc == 0:
-                    ok = True
-                    real_blocks += 1
-                    break
-                errors = log
-            except InfraError:
-                raise
-            except (LLMError, Exception) as e:
-                errors = str(e)
-                print(f"  {stem} attempt {attempt}: {e}", flush=True)
-        if not ok:
-            print(f"  {stem}: still failing after 3 tries; marking lines ［未译］", flush=True)
-            open(dest, "w", encoding="utf-8").write(_marker(src_map))
-            rc, log = _check(wd, stem)
-            print(log, flush=True)
-            if rc != 0:
-                raise SystemExit(f"{stem}: marker file still fails tr_check\n{log}")
+        item = outcomes.get(stem)
+        if item and item["ok"]:
+            real_blocks += 1
+        elif item:
             failed_blocks.append(stem)
     rc, log = _check_all(wd)
     print(log, flush=True)
@@ -150,8 +175,8 @@ def main():
         "blocks_translated": real_blocks,
         "failed_blocks": failed_blocks,
     }
-    # tr_check already printed the line count; record failed blocks for the episode report.
-    json.dump(report, open(os.path.join(wd, "translate_report.json"), "w", encoding="utf-8"), indent=2)
+    with open(os.path.join(wd, "translate_report.json"), "w", encoding="utf-8") as f:
+        json.dump(report, f, indent=2)
     print(f"translate: {real_blocks}/{len(srcs)} blocks clean, failed={failed_blocks or 'none'}", flush=True)
 
 

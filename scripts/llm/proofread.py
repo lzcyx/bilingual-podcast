@@ -109,21 +109,43 @@ def main():
 
     edits = {}
     for n, rows in enumerate(_chunk(raw, a.chunk), 1):
-        user = "id, speaker, word_count, text\n" + _tsv(rows)
-        try:
-            text = client.chat(
-                [{"role": "system", "content": CHUNK_SYSTEM}, {"role": "user", "content": user}],
-                step="proofread", temperature=0.2, json_mode=True, max_tokens=4096,
-                extra={"chunk": n})
-            obj = parse_json_content(text)
-            part, warns = validate_edits(obj.get("edits") if isinstance(obj, dict) else {}, by_id)
-            for w in warns[:20]:
-                print("  warn:", w, flush=True)
-            edits.update(part)
-        except InfraError:
-            raise
-        except (LLMError, Exception) as e:
-            print(f"proofread: chunk {n} failed, leaving those lines unchanged ({e})", flush=True)
+        chunk_ids = {ln["id"] for ln in rows}
+        user_base = "id, speaker, word_count, text\n" + _tsv(rows)
+        errors = ""
+        part = {}
+        for attempt in range(1, 4):
+            user = user_base
+            if errors:
+                user += "\n\nYour previous JSON used line ids that are not in this slice. Return edits only for these ids:\n" + errors
+            try:
+                text = client.chat(
+                    [{"role": "system", "content": CHUNK_SYSTEM}, {"role": "user", "content": user}],
+                    step="proofread", temperature=0.2, json_mode=True, max_tokens=4096,
+                    extra={"chunk": n, "attempt": attempt})
+                obj = parse_json_content(text)
+                edits_obj = obj.get("edits") if isinstance(obj, dict) else None
+                if not isinstance(edits_obj, dict):
+                    errors = "edits must be an object keyed by the line ids in this slice"
+                    print(f"  proofread chunk {n} attempt {attempt}: {errors}", flush=True)
+                    continue
+                unknown = [str(k) for k in edits_obj if str(k) not in chunk_ids]
+                if unknown:
+                    errors = "unknown line ids: " + ", ".join(unknown[:20])
+                    print(f"  proofread chunk {n} attempt {attempt}: {errors}", flush=True)
+                    if attempt < 3:
+                        continue
+                part, warns = validate_edits(edits_obj, {i: by_id[i] for i in chunk_ids})
+                for w in warns[:20]:
+                    print("  warn:", w, flush=True)
+                break
+            except InfraError:
+                raise
+            except (LLMError, Exception) as e:
+                errors = str(e)
+                print(f"proofread: chunk {n} attempt {attempt} failed ({e})", flush=True)
+        else:
+            print(f"proofread: chunk {n} left unchanged", flush=True)
+        edits.update(part)
     json.dump(edits, open(os.path.join(wd, "edits.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=2)
     print(f"proofread: {len(fixes)} fixes, {len(edits)} edits, {len(speakers)} speakers", flush=True)
 

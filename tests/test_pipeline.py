@@ -17,7 +17,8 @@ from scripts.feeds import build_plan, item_key, parse_duration, parse_rss, slugi
 from scripts.llm.schema import (  # noqa: E402
     chapter_bounds, fallback_chapters, validate_chapters, validate_edits, validate_fixes, validate_speakers,
 )
-from scripts.publish import classify_results, merge_index  # noqa: E402
+from scripts.publish import apply_retention, classify_results, merge_index  # noqa: E402
+from scripts.llm.client import consume_sse  # noqa: E402
 
 RSS = """<?xml version="1.0"?>
 <rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
@@ -209,6 +210,66 @@ class TrCheckTests(unittest.TestCase):
             self.assertEqual(full.returncode, 0, full.stdout + full.stderr)
             cues = json.load(open(os.path.join(td, "cues.json"), encoding="utf-8"))
             self.assertEqual([c["tr"] for c in cues], ["你好朋友们。", "后面还有。"])
+
+
+class RetentionTests(unittest.TestCase):
+    def test_old_offline_is_archived_online_stays(self):
+        now = datetime(2026, 10, 2, tzinfo=timezone.utc)
+        index = [
+            {"show_id": "ignuk", "guid": "old", "audio_mode": "offline",
+             "pub_date": "2026-07-01T00:00:00+00:00",
+             "html_url": "https://x.github.io/bilingual-podcast/episodes/ignuk/old.html"},
+            {"show_id": "opp", "guid": "live", "audio_mode": "online",
+             "pub_date": "2026-07-01T00:00:00+00:00",
+             "html_url": "https://x.github.io/bilingual-podcast/episodes/opp/live.html"},
+            {"show_id": "ignuk", "guid": "recent", "audio_mode": "offline",
+             "pub_date": "2026-09-20T00:00:00+00:00",
+             "html_url": "https://x.github.io/bilingual-podcast/episodes/ignuk/recent.html"},
+        ]
+        files = {
+            "episodes/ignuk/old.html": 100,
+            "episodes/opp/live.html": 10,
+            "episodes/ignuk/recent.html": 80,
+        }
+        out, deleted = apply_retention(index, files, keep_days=60, now=now)
+        by = {e["guid"]: e for e in out}
+        self.assertTrue(by["old"]["archived"])
+        self.assertFalse(by["live"]["archived"])
+        self.assertFalse(by["recent"]["archived"])
+        self.assertEqual(deleted, ["episodes/ignuk/old.html"])
+
+    def test_size_cap_drops_oldest_offline(self):
+        now = datetime(2026, 10, 2, tzinfo=timezone.utc)
+        index = [
+            {"guid": "a", "show_id": "ignuk", "audio_mode": "offline",
+             "pub_date": "2026-09-01T00:00:00+00:00",
+             "html_url": "https://h/episodes/ignuk/a.html"},
+            {"guid": "b", "show_id": "ignuk", "audio_mode": "offline",
+             "pub_date": "2026-09-20T00:00:00+00:00",
+             "html_url": "https://h/episodes/ignuk/b.html"},
+        ]
+        files = {"episodes/ignuk/a.html": 80, "episodes/ignuk/b.html": 80}
+        out, deleted = apply_retention(index, files, keep_days=60, now=now, max_bytes=100)
+        by = {e["guid"]: e for e in out}
+        self.assertTrue(by["a"]["archived"])
+        self.assertFalse(by["b"]["archived"])
+        self.assertEqual(deleted, ["episodes/ignuk/a.html"])
+
+
+class SseTests(unittest.TestCase):
+    def test_consume_sse(self):
+        text = "\n".join([
+            'data: {"choices":[{"delta":{"content":"hello"}}]}',
+            "",
+            'data: {"choices":[{"delta":{"content":" world"}}],"usage":{"prompt_tokens":3,"completion_tokens":2}}',
+            "",
+            "data: [DONE]",
+            "",
+        ])
+        content, usage = consume_sse(text)
+        self.assertEqual(content, "hello world")
+        self.assertEqual(usage["prompt_tokens"], 3)
+        self.assertEqual(usage["completion_tokens"], 2)
 
 
 if __name__ == "__main__":

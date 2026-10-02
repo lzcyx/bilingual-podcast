@@ -12,6 +12,7 @@
   "output": "out/PS_Podcast_548.html",
   "variant": "S",
   "audio_mode": "online",
+  "embed_kbps": 32,
   "dynamic_ads": false,
   "source_lang": "en",
   "target_lang": "zh",

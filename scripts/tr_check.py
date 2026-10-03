@@ -62,6 +62,7 @@ def main():
             sys.exit(f'no block matching {a.only}')
     for sp in srcs:
         tp = sp.replace('.src.txt', f'.{a.lang}.txt'); name = os.path.basename(tp)
+        no_cjk_lines = []
         src, _ = parse(sp)
         if not os.path.exists(tp):
             errs.append(f'{name}: missing file ({len(src)} groups)'); continue
@@ -80,13 +81,33 @@ def main():
                 errs.append(f'{name}: {k} has {len(parts)} part(s), needs {need} (={need - 1} ｜)'); continue
             en_parts = [p.strip() for p in src[k].split(' | ')]
             for i, p, e in zip(range(lo, hi + 1), parts, en_parts):
-                if not p: errs.append(f'{name}: line {i} empty translation')
-                elif p == e and len(e) > 12: warns.append(f'{name}: line {i} identical to source: {e[:50]}')
-                elif cjk_target and not CJK.search(p) and len(e.split()) > 3: warns.append(f'{name}: line {i} has no CJK: {p[:50]}')
+                if not p:
+                    errs.append(f'{name}: line {i} empty translation')
+                elif p == '［未译］':
+                    errs.append(f'{name}: line {i} is marked untranslated')
+                elif p == e and len(e) > 12:
+                    errs.append(f'{name}: line {i} identical to source: {e[:50]}')
+                elif cjk_target and not CJK.search(p) and len(e.split()) > 3:
+                    warns.append(f'{name}: line {i} has no CJK: {p[:50]}')
+                    no_cjk_lines.append(i)
                 tr[i] = p
             if cjk_target:
                 el, zl = len(src[k]), len(v)
                 if el > 40 and (zl < el * 0.12 or zl > el * 1.2): warns.append(f'{name}: {k} length ratio {zl}/{el} looks off')
+        if cjk_target and no_cjk_lines:
+            run = []
+            runs = []
+            for i in sorted(no_cjk_lines):
+                if run and i != run[-1] + 1:
+                    if len(run) >= 3: runs.append(run)
+                    run = []
+                run.append(i)
+            if len(run) >= 3: runs.append(run)
+            for r in runs:
+                errs.append(f'{name}: line {r[0]}-{r[-1]} consecutive translations have no CJK')
+            translated_lines = sum(rng(k)[1] - rng(k)[0] + 1 for k in src)
+            if translated_lines and len(no_cjk_lines) / translated_lines > 0.15:
+                errs.append(f'{name}: line {no_cjk_lines[0]} block has too many no-CJK translations ({len(no_cjk_lines)}/{translated_lines})')
     if not only:
         missing = [i for i in range(len(lines)) if i not in tr]
         if missing and not errs: errs.append(f'lines without translation: {missing[:30]}')

@@ -165,34 +165,20 @@ class SchemaTests(unittest.TestCase):
 
 
 class TranslateSalvageTests(unittest.TestCase):
-    def test_repairs_empty_part_and_extra_part(self):
-        from scripts.llm.translate import _render, _salvage, LLMError
+    def test_bad_parts_are_retried_not_locally_repaired(self):
+        from scripts.llm.translate import _render, _salvage, _source_subset, LLMError
         src = {"0": "Hello there friends.", "1-2": "I am your host Tim. | the wonderful Kristen.", "3": "It's me!"}
-        obj = {"groups": [
-            {"key": "0", "parts": ["大家好。"]},
-            {"key": "1-2", "parts": ["我是主持人 Tim，请来了非常棒的 Kristen。", ""]},
-            {"key": "3", "parts": ["是我！"]},
-            {"key": "99", "parts": ["多余"]},
-        ]}
-        text = _render(obj, src)
-        self.assertIn("0\t大家好。", text)
-        self.assertIn("3\t是我！", text)
-        self.assertNotIn("［未译］", text)
-        parts = [ln for ln in text.splitlines() if ln.startswith("1-2\t")][0].split("\t", 1)[1].split("｜")
-        self.assertEqual(len(parts), 2)
-        self.assertTrue(all(parts))
-        self.assertIn("Kristen", parts[1])
-
-        merged = _render({"groups": [{"key": "1-2", "parts": ["我是 Tim。", "请来了", "Kristen。"]}]}, {"1-2": src["1-2"]})
-        bits = merged.strip().split("\t", 1)[1].split("｜")
-        self.assertEqual(len(bits), 2)
-        self.assertEqual("".join(bits), "我是 Tim。请来了Kristen。")
-
         with self.assertRaises(LLMError):
-            _render({"groups": [{"key": "0", "parts": ["大家好。"]}]}, src)
+            _render({"groups": [{"key": "1-2", "parts": ["我是主持人 Tim，请来了 Kristen。", ""]}]}, {"1-2": src["1-2"]})
+        with self.assertRaises(LLMError):
+            _render({"groups": [{"key": "1-2", "parts": ["我是 Tim。", "请来了", "Kristen。"]}]}, {"1-2": src["1-2"]})
         salvaged = _salvage({"groups": [{"key": "1-2", "parts": ["我是 Tim，Kristen。"]}]}, {"1-2": src["1-2"]})
-        self.assertEqual(salvaged.count("｜"), 1)
-        self.assertNotIn("［未译］", salvaged)
+        self.assertIn("［未译］｜［未译］", salvaged)
+
+        body = "# block\n# speaker: Alice (S0)\n0\tHello\n# speaker: Bob (S1)\n1-2\tOne | Two\n3\tThree\n"
+        subset = _source_subset(body, {"0": "Hello", "1-2": "One | Two", "3": "Three"}, ["1-2"])
+        self.assertIn("# speaker: Bob (S1)\n1-2\tOne | Two", subset)
+        self.assertNotIn("# speaker: Alice", subset)
 
 
 class DeepSeekPriceTests(unittest.TestCase):
@@ -274,6 +260,10 @@ class TrCheckTests(unittest.TestCase):
             open(zh, "w", encoding="utf-8").write("0-1\t只有一段\n")
             bad = subprocess.run([sys.executable, script, "--workdir", td, "--only", "b01"], capture_output=True, text=True)
             self.assertNotEqual(bad.returncode, 0)
+            open(zh, "w", encoding="utf-8").write("0-1\tHello there friends today.｜后面还有。\n")
+            copied = subprocess.run([sys.executable, script, "--workdir", td, "--only", "b01"], capture_output=True, text=True)
+            self.assertNotEqual(copied.returncode, 0)
+            self.assertIn("identical to source", copied.stdout + copied.stderr)
             open(zh, "w", encoding="utf-8").write("0-1\t你好朋友们。｜后面还有。\n")
             full = subprocess.run([sys.executable, script, "--workdir", td], capture_output=True, text=True)
             self.assertEqual(full.returncode, 0, full.stdout + full.stderr)

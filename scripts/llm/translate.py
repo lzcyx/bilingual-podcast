@@ -53,80 +53,26 @@ def _groups(obj) -> dict:
     return got
 
 
-def _en_weights(src_value: str, need: int) -> list[int]:
-    ens = [p.strip() for p in src_value.split(" | ")]
-    if len(ens) != need:
-        ens = [src_value] * need
-    return [max(1, len(e)) for e in ens]
+def _fit_parts(raw) -> list[str]:
+    """Normalize model parts without guessing, merging, or splitting translated text."""
+    if not isinstance(raw, list):
+        return []
+    return [str(p).strip().replace("|", "／").replace("｜", "") for p in raw]
 
 
-def _split_text(text: str, weights: list[int]) -> list[str]:
-    """Cut one Chinese sentence into len(weights) pieces, near the English lengths."""
-    text = " ".join(text.split())
-    n = len(weights)
-    if n <= 1:
-        return [text or "［未译］"]
-    if not text:
-        return ["［未译］"] * n
-    weights = [max(1, int(w)) for w in weights]
-    total = sum(weights)
-    cuts = [0]
-    acc = 0
-    for w in weights[:-1]:
-        acc += w
-        target = round(acc / total * len(text))
-        lo = cuts[-1] + 1
-        hi = len(text) - (n - len(cuts) - 1)
-        target = min(max(target, lo), hi - 1)
-        best = None
-        for i in range(max(lo, target - 12), min(hi, target + 13)):
-            if text[i - 1] in "，。！？、；：…,.!?;:":
-                if best is None or abs(i - target) < abs(best - target):
-                    best = i
-        cuts.append(best if best is not None else target)
-    cuts.append(len(text))
-    parts = []
-    for i in range(n):
-        p = text[cuts[i]:cuts[i + 1]].strip()
-        if i:
-            p = p.lstrip("，、,;； ")
-        parts.append(p)
-    if any(not p for p in parts):
-        step = len(text) / n
-        parts = [text[round(i * step):round((i + 1) * step)].strip() for i in range(n)]
-    return [p if p else "［未译］" for p in parts]
-
-
-def _fit_parts(raw, src_value: str, need: int) -> list[str]:
-    """Make exactly `need` non-empty parts from a short or long model list."""
-    parts: list[str] = []
-    if isinstance(raw, list):
-        parts = [str(p).strip().replace("|", "／").replace("｜", "") for p in raw]
-    elif isinstance(raw, str) and raw.strip():
-        parts = [raw.strip().replace("|", "／")]
-    parts = [p for p in parts if p]
-    if len(parts) == need:
-        return parts
-    while len(parts) > need:
-        i = min(range(len(parts)), key=lambda k: (len(parts[k]), k))
-        j = i - 1 if i else 1
-        a, b = (i, j) if i < j else (j, i)
-        parts = parts[:a] + [parts[a] + parts[b]] + parts[b + 1:]
-    if len(parts) == need:
-        return parts
-    return _split_text("".join(parts), _en_weights(src_value, need))
-
-
-def _usable(parts: list[str]) -> bool:
-    return all(p and p != "［未译］" for p in parts)
+def _usable(parts: list[str], need: int) -> bool:
+    return len(parts) == need and all(p and p != "［未译］" for p in parts)
 
 
 def _salvage(obj, src_map: dict) -> str:
-    """Keep every line that can be repaired. Only a line with no text stays ［未译］."""
+    """Keep structurally valid groups; never invent subtitle boundaries locally."""
     got = _groups(obj)
     out = []
     for key in src_map:
-        parts = _fit_parts(got.get(key), src_map[key], _need(key))
+        need = _need(key)
+        parts = _fit_parts(got.get(key))
+        if not _usable(parts, need):
+            parts = ["［未译］"] * need
         out.append(key + "\t" + "｜".join(parts))
     return "\n".join(out) + "\n"
 
@@ -143,8 +89,12 @@ def _render(obj, src_map: dict) -> str:
     for key in src_map:
         if key not in got:
             continue
-        parts = _fit_parts(got.get(key), src_map[key], _need(key))
-        if not _usable(parts):
+        need = _need(key)
+        parts = _fit_parts(got.get(key))
+        if len(parts) != need:
+            errs.append(f"{key}: {len(parts)} parts, need {need}")
+            continue
+        if not _usable(parts, need):
             errs.append(f"{key}: empty part")
             continue
         out.append(key + "\t" + "｜".join(parts))
@@ -162,10 +112,32 @@ def _check(workdir, stem) -> tuple[int, str]:
 
 
 def _source_subset(body: str, src_map: dict, keys) -> str:
-    lines = [ln for ln in body.splitlines() if ln.lstrip().startswith("#")]
-    for key in keys:
-        lines.append(key + "\t" + src_map[key])
-    return "\n".join(lines)
+    """Keep context plus the speaker immediately associated with each selected group."""
+    wanted = set(keys)
+    headers = []
+    selected = []
+    current_speaker = None
+    emitted_speaker = None
+    for ln in body.splitlines():
+        stripped = ln.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("# speaker:"):
+            current_speaker = stripped
+            continue
+        if stripped.startswith("# context:") or stripped.startswith("# block"):
+            headers.append(stripped)
+            continue
+        if stripped.startswith("#"):
+            continue
+        key = stripped.split("\t", 1)[0].split(None, 1)[0]
+        if key not in wanted:
+            continue
+        if current_speaker and current_speaker != emitted_speaker:
+            selected.append(current_speaker)
+            emitted_speaker = current_speaker
+        selected.append(key + "\t" + src_map[key])
+    return "\n".join(headers + selected)
 
 
 def _take(obj, src_map: dict, keys):
@@ -175,8 +147,9 @@ def _take(obj, src_map: dict, keys):
         if key not in got:
             bad.append(key)
             continue
-        parts = _fit_parts(got.get(key), src_map[key], _need(key))
-        if _usable(parts):
+        need = _need(key)
+        parts = _fit_parts(got.get(key))
+        if _usable(parts, need):
             good[key] = parts
         else:
             bad.append(key)
@@ -185,6 +158,16 @@ def _take(obj, src_map: dict, keys):
 
 def _format(src_map: dict, parts_by_key: dict) -> str:
     return "\n".join(key + "\t" + "｜".join(parts_by_key[key]) for key in src_map) + "\n"
+
+
+def _bad_keys_from_check(log: str, src_map: dict) -> list[str]:
+    bad_lines = {int(x) for x in re.findall(r"ERROR: .*?line (\d+)", log)}
+    bad = []
+    for key in src_map:
+        lo, hi = tr_check.rng(key)
+        if any(lo <= i <= hi for i in bad_lines):
+            bad.append(key)
+    return bad
 
 
 def _translate_block(client, wd, sp, lang, glossary):
@@ -224,28 +207,20 @@ def _translate_block(client, wd, sp, lang, glossary):
             if rc == 0:
                 return {"stem": stem, "ok": True}
             errors = log
+            bad_quality = _bad_keys_from_check(log, src_map)
             if attempt < 3:
-                accepted = {}
+                if bad_quality:
+                    for key in bad_quality:
+                        accepted.pop(key, None)
+                else:
+                    accepted = {}
         except InfraError:
             raise
         except (LLMError, Exception) as e:
             errors = str(e)
             print(f"  {stem} attempt {attempt}: {e}", flush=True)
-    if last_obj is not None:
-        good, _ = _take(last_obj, src_map, [k for k in src_map if k not in accepted])
-        accepted.update(good)
-    for key in src_map:
-        accepted.setdefault(key, ["［未译］"] * _need(key))
-    rendered = _format(src_map, accepted)
-    blank = rendered.count("［未译］")
-    print(f"  {stem}: keeping partial translation, {blank} line(s) left ［未译］", flush=True)
-    with open(dest, "w", encoding="utf-8") as f:
-        f.write(rendered)
-    rc, log = _check(wd, stem)
-    print(log, flush=True)
-    if rc != 0:
-        raise SystemExit(f"{stem}: marker file still fails tr_check\n{log}")
-    return {"stem": stem, "ok": False}
+    missing = [key for key in src_map if key not in accepted]
+    raise SystemExit(f"{stem}: translation failed quality checks after 3 attempts; pending={missing[:12]}; {errors[:1200]}")
 
 
 def main():

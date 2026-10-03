@@ -255,7 +255,8 @@ jobs:
               mean = means[cfg]
               speedup = ((baseline / mean - 1) * 100) if baseline and mean else None
               speed = f"{speedup:+.1f}%" if speedup is not None else "—"
-              lines.append(f'| {cfg} | ' + " | ".join(vals) + f' | {mean:.3f} | {speed} |')
+              mean_text = f"{mean:.3f}" if mean is not None else "—"
+              lines.append(f'| {cfg} | ' + " | ".join(vals) + f' | {mean_text} | {speed} |')
 
           complete = [(cfg, means[cfg]) for cfg in configs if means[cfg] is not None]
           if complete:

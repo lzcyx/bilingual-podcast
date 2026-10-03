@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101420">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="双语播客">
+<title>双语播客</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #101420; color: #fff; }
+  body {
+    font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
+    min-height: 100%;
+    padding: calc(18px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom));
+  }
+  header { max-width: 720px; margin: 0 auto 8px; }
+  h1 { font-size: 28px; margin: 0 0 4px; letter-spacing: -0.03em; }
+  .sub { color: #9aa3b8; font-size: 14px; margin: 0; }
+  .chips {
+    max-width: 720px; margin: 16px auto 8px;
+    display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip {
+    border: 0; background: rgba(255,255,255,.1); color: #fff;
+    border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 14px; font-weight: 650;
+    cursor: pointer; white-space: nowrap;
+  }
+  .chip.on { background: #fff; color: #101420; }
+  main { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+  a.card, div.card {
+    display: grid; grid-template-columns: 72px 1fr; gap: 12px; align-items: center;
+    text-decoration: none; color: inherit;
+    background: rgba(255,255,255,.06); border-radius: 16px; padding: 10px;
+  }
+  a.card:active { background: rgba(255,255,255,.12); }
+  .cover {
+    width: 72px; height: 72px; border-radius: 12px; object-fit: cover; background: #1c2233;
+  }
+  .cover.ph { display: block; }
+  .title { font-weight: 700; font-size: 16px; letter-spacing: -0.01em; }
+  .meta { color: #9aa3b8; font-size: 13px; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .badge {
+    border-radius: 999px; padding: 1px 8px; font-size: 12px; font-weight: 700;
+    background: rgba(255,255,255,.12); color: #fff;
+  }
+  .badge.off { background: rgba(242,193,78,.18); color: #f2c14e; }
+  .badge.arch { background: rgba(255,255,255,.08); color: #8b93a7; }
+  .empty { color: #9aa3b8; padding: 28px 4px; }
+  footer {
+    max-width: 720px; margin: 22px auto 0; color: #8b93a7; font-size: 13px;
+    display: flex; justify-content: space-between; gap: 12px; align-items: center;
+  }
+  #clear {
+    border: 0; background: rgba(255,255,255,.1); color: #fff; border-radius: 999px;
+    padding: 8px 12px; font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .badge.upd { background: rgba(74,222,128,.16); color: #86efac; }
+  #updateNotice {
+    position: fixed; z-index: 30; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom));
+    width: min(92vw, 520px); transform: translate(-50%, 24px);
+    background: rgba(31,37,54,.97); border: 1px solid rgba(255,255,255,.12);
+    border-radius: 16px; padding: 14px 15px; box-shadow: 0 14px 40px rgba(0,0,0,.45);
+    opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease;
+  }
+  #updateNotice.show { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+  #updateNotice b { display: block; font-size: 15px; margin-bottom: 3px; }
+  #updateNotice p { margin: 0; color: #b9c1d4; font-size: 13px; }
+  #updateNotice .acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 11px; }
+  #updateNotice button {
+    border: 0; border-radius: 999px; padding: 8px 12px; font: inherit;
+    font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  #updateDismiss { background: rgba(255,255,255,.1); color: #fff; }
+  #updateView { background: #fff; color: #101420; }
+</style>
+</head>
+<body>
+<header>
+  <h1>双语播客</h1>
+  <p class="sub">英文原文和简体中文，跟着声音一起亮。</p>
+</header>
+<nav class="chips" id="chips"></nav>
+<main id="list"></main>
+<footer>
+  <span id="cache">缓存计算中…</span>
+  <button id="clear" type="button">清理缓存</button>
+</footer>
+<div id="updateNotice" role="status" aria-live="polite">
+  <b id="updateTitle">已缓存节目有更新</b>
+  <p id="updateText"></p>
+  <div class="acts">
+    <button id="updateDismiss" type="button">知道了</button>
+    <button id="updateView" type="button">查看更新</button>
+  </div>
+</div>
+<script>
+const MEDIA = "bp-media-v1";
+let rows = [];
+let filter = "all";
+let updatedGuids = new Set();
+
+function fmtDur(sec) {
+  sec = Number(sec) || 0;
+  const h = Math.floor(sec / 3600);
+  const m = Math.round((sec % 3600) / 60);
+  if (h <= 0) return m + " 分钟";
+  return h + " 小时 " + String(m).padStart(2, "0") + " 分";
+}
+function day(iso) { return (iso || "").slice(0, 10); }
+function relativeUrl(raw, marker) {
+  const u = raw || "";
+  const i = u.indexOf(marker);
+  return i >= 0 ? u.slice(i) : u;
+}
+function withRevision(url, revision) {
+  if (!url || !revision) return url;
+  const sep = url.includes("?") ? "&" : "?";
+  return url + sep + "v=" + encodeURIComponent(revision);
+}
+function hrefOf(ep) {
+  return withRevision(relativeUrl(ep.html_url, "episodes/"), ep.revision);
+}
+function coverOf(ep) {
+  return withRevision(relativeUrl(ep.cover_url, "covers/"), ep.revision);
+}
+function fmtBytes(n) {
+  if (n < 1024) return n + " B";
+  if (n < 1048576) return (n / 1024).toFixed(1) + " KB";
+  if (n < 1073741824) return (n / 1048576).toFixed(1) + " MB";
+  return (n / 1073741824).toFixed(2) + " GB";
+}
+
+function renderChips() {
+  const names = new Map();
+  rows.forEach((ep) => names.set(ep.show_id, ep.show || ep.show_id));
+  const box = document.getElementById("chips");
+  box.innerHTML = "";
+  const all = document.createElement("button");
+  all.className = "chip" + (filter === "all" ? " on" : "");
+  all.textContent = "全部";
+  all.onclick = () => { filter = "all"; renderChips(); renderList(); };
+  box.appendChild(all);
+  names.forEach((name, id) => {
+    const b = document.createElement("button");
+    b.className = "chip" + (filter === id ? " on" : "");
+    b.textContent = name;
+    b.onclick = () => { filter = id; renderChips(); renderList(); };
+    box.appendChild(b);
+  });
+}
+
+function renderList() {
+  const list = document.getElementById("list");
+  const items = rows.filter((ep) => filter === "all" || ep.show_id === filter);
+  list.innerHTML = "";
+  if (!items.length) {
+    const p = document.createElement("p");
+    p.className = "empty";
+    p.textContent = rows.length ? "这个节目还没有一期。" : "还没有节目。新的一期发布后会出现在这里。";
+    list.appendChild(p);
+    return;
+  }
+  items.forEach((ep) => {
+    const archived = !!ep.archived;
+    const el = document.createElement(archived ? "div" : "a");
+    el.className = "card";
+    if (!archived) el.href = hrefOf(ep);
+    const img = document.createElement("img");
+    img.className = "cover";
+    img.alt = "";
+    const src = coverOf(ep);
+    if (src) img.src = src;
+    else img.classList.add("ph");
+    const body = document.createElement("div");
+    const title = document.createElement("div");
+    title.className = "title";
+    title.textContent = ep.title || "未命名";
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    const when = document.createElement("span");
+    when.textContent = day(ep.pub_date);
+    const dur = document.createElement("span");
+    dur.textContent = fmtDur(ep.duration_sec);
+    const mode = document.createElement("span");
+    mode.className = "badge" + (ep.audio_mode === "offline" ? " off" : "");
+    mode.textContent = ep.audio_mode === "offline" ? "离线" : "在线";
+    meta.append(when, dur, mode);
+    if (updatedGuids.has(ep.guid)) {
+      const upd = document.createElement("span");
+      upd.className = "badge upd";
+      upd.textContent = "有更新";
+      meta.appendChild(upd);
+      el.dataset.updated = "1";
+    }
+    if (archived) {
+      const arch = document.createElement("span");
+      arch.className = "badge arch";
+      arch.textContent = "已归档";
+      meta.appendChild(arch);
+    }
+    body.append(title, meta);
+    el.append(img, body);
+    list.appendChild(el);
+  });
+}
+
+async function detectCachedUpdates(items) {
+  const out = new Set();
+  if (!("caches" in window)) return out;
+  try {
+    const cache = await caches.open(MEDIA);
+    const keys = await cache.keys();
+    const byPath = new Map();
+    for (const req of keys) {
+      const u = new URL(req.url);
+      if (!u.pathname.includes("/episodes/")) continue;
+      if (!byPath.has(u.pathname)) byPath.set(u.pathname, new Set());
+      byPath.get(u.pathname).add(u.searchParams.get("v") || "");
+    }
+    for (const ep of items) {
+      if (!ep || ep.archived || !ep.guid || !ep.revision || !ep.html_url) continue;
+      const path = new URL(relativeUrl(ep.html_url, "episodes/"), location.href).pathname;
+      const cached = byPath.get(path);
+      if (cached && cached.size && !cached.has(String(ep.revision))) {
+        out.add(ep.guid);
+      }
+    }
+  } catch (e) {
+    console.warn("cache update check failed", e);
+  }
+  return out;
+}
+
+function hideUpdateNotice() {
+  document.getElementById("updateNotice").classList.remove("show");
+}
+
+function showUpdateNotice() {
+  const n = updatedGuids.size;
+  if (!n) {
+    hideUpdateNotice();
+    return;
+  }
+  document.getElementById("updateTitle").textContent = "已缓存节目有更新";
+  document.getElementById("updateText").textContent =
+    "检测到 " + n + " 期已缓存内容有新版。打开对应节目会自动获取最新版。";
+  document.getElementById("updateNotice").classList.add("show");
+}
+
+document.getElementById("updateDismiss").onclick = hideUpdateNotice;
+document.getElementById("updateView").onclick = () => {
+  hideUpdateNotice();
+  const first = document.querySelector('[data-updated="1"]');
+  if (first) first.scrollIntoView({ behavior: "smooth", block: "center" });
+};
+
+async function cacheBytes() {
+  if (!("caches" in window)) return 0;
+  let n = 0;
+  const keys = await caches.keys();
+  for (const key of keys) {
+    const cache = await caches.open(key);
+    for (const req of await cache.keys()) {
+      const res = await cache.match(req);
+      if (!res) continue;
+      const len = Number(res.headers.get("content-length"));
+      if (len) n += len;
+      else n += (await res.clone().blob()).size;
+    }
+  }
+  return n;
+}
+
+async function showCache() {
+  const el = document.getElementById("cache");
+  try {
+    el.textContent = "已缓存 " + fmtBytes(await cacheBytes());
+  } catch (e) {
+    el.textContent = "缓存大小不可用";
+  }
+}
+
+document.getElementById("clear").onclick = async () => {
+  if ("caches" in window) {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((k) => k === MEDIA || k.indexOf("bp-") === 0).map((k) => caches.delete(k)));
+  }
+  updatedGuids.clear();
+  hideUpdateNotice();
+  renderList();
+  await showCache();
+};
+
+async function load() {
+  const res = await fetch("index.json", { cache: "no-store" });
+  rows = await res.json();
+  if (!Array.isArray(rows)) rows = [];
+  rows.sort((a, b) => String(b.pub_date || "").localeCompare(String(a.pub_date || "")));
+  updatedGuids = await detectCachedUpdates(rows);
+  renderChips();
+  renderList();
+  showUpdateNotice();
+}
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js").catch(() => {});
+}
+load().catch((err) => {
+  document.getElementById("list").innerHTML = '<p class="empty">列表没有加载出来。连上网后再打开一次。</p>';
+  console.error(err);
+});
+showCache();
+</script>
+</body>
+</html>

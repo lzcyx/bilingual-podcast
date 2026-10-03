@@ -165,21 +165,34 @@ class SchemaTests(unittest.TestCase):
 
 
 class TranslateSalvageTests(unittest.TestCase):
-    def test_empty_part_keeps_the_rest_of_the_block(self):
+    def test_repairs_empty_part_and_extra_part(self):
         from scripts.llm.translate import _render, _salvage, LLMError
-        src = {"0": "Hello there friends.", "1-2": "I am Tim. | the wonderful Kristen.", "3": "It's me!"}
+        src = {"0": "Hello there friends.", "1-2": "I am your host Tim. | the wonderful Kristen.", "3": "It's me!"}
         obj = {"groups": [
             {"key": "0", "parts": ["大家好。"]},
-            {"key": "1-2", "parts": ["我是 Tim。", ""]},
+            {"key": "1-2", "parts": ["我是主持人 Tim，请来了非常棒的 Kristen。", ""]},
             {"key": "3", "parts": ["是我！"]},
+            {"key": "99", "parts": ["多余"]},
         ]}
-        with self.assertRaises(LLMError):
-            _render(obj, src)
-        text = _salvage(obj, src)
+        text = _render(obj, src)
         self.assertIn("0\t大家好。", text)
-        self.assertIn("1-2\t我是 Tim。｜［未译］", text)
         self.assertIn("3\t是我！", text)
-        self.assertEqual(text.count("［未译］"), 1)
+        self.assertNotIn("［未译］", text)
+        parts = [ln for ln in text.splitlines() if ln.startswith("1-2\t")][0].split("\t", 1)[1].split("｜")
+        self.assertEqual(len(parts), 2)
+        self.assertTrue(all(parts))
+        self.assertIn("Kristen", parts[1])
+
+        merged = _render({"groups": [{"key": "1-2", "parts": ["我是 Tim。", "请来了", "Kristen。"]}]}, {"1-2": src["1-2"]})
+        bits = merged.strip().split("\t", 1)[1].split("｜")
+        self.assertEqual(len(bits), 2)
+        self.assertEqual("".join(bits), "我是 Tim。请来了Kristen。")
+
+        with self.assertRaises(LLMError):
+            _render({"groups": [{"key": "0", "parts": ["大家好。"]}]}, src)
+        salvaged = _salvage({"groups": [{"key": "1-2", "parts": ["我是 Tim，Kristen。"]}]}, {"1-2": src["1-2"]})
+        self.assertEqual(salvaged.count("｜"), 1)
+        self.assertNotIn("［未译］", salvaged)
 
 
 class PublishTests(unittest.TestCase):

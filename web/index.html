@@ -64,6 +64,24 @@
     border: 0; background: rgba(255,255,255,.1); color: #fff; border-radius: 999px;
     padding: 8px 12px; font: inherit; font-size: 13px; cursor: pointer;
   }
+  .badge.upd { background: rgba(74,222,128,.16); color: #86efac; }
+  #updateNotice {
+    position: fixed; z-index: 30; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom));
+    width: min(92vw, 520px); transform: translate(-50%, 24px);
+    background: rgba(31,37,54,.97); border: 1px solid rgba(255,255,255,.12);
+    border-radius: 16px; padding: 14px 15px; box-shadow: 0 14px 40px rgba(0,0,0,.45);
+    opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease;
+  }
+  #updateNotice.show { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+  #updateNotice b { display: block; font-size: 15px; margin-bottom: 3px; }
+  #updateNotice p { margin: 0; color: #b9c1d4; font-size: 13px; }
+  #updateNotice .acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 11px; }
+  #updateNotice button {
+    border: 0; border-radius: 999px; padding: 8px 12px; font: inherit;
+    font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  #updateDismiss { background: rgba(255,255,255,.1); color: #fff; }
+  #updateView { background: #fff; color: #101420; }
 </style>
 </head>
 <body>
@@ -77,10 +95,19 @@
   <span id="cache">缓存计算中…</span>
   <button id="clear" type="button">清理缓存</button>
 </footer>
+<div id="updateNotice" role="status" aria-live="polite">
+  <b id="updateTitle">已缓存节目有更新</b>
+  <p id="updateText"></p>
+  <div class="acts">
+    <button id="updateDismiss" type="button">知道了</button>
+    <button id="updateView" type="button">查看更新</button>
+  </div>
+</div>
 <script>
 const MEDIA = "bp-media-v1";
 let rows = [];
 let filter = "all";
+let updatedGuids = new Set();
 
 function fmtDur(sec) {
   sec = Number(sec) || 0;
@@ -90,15 +117,21 @@ function fmtDur(sec) {
   return h + " 小时 " + String(m).padStart(2, "0") + " 分";
 }
 function day(iso) { return (iso || "").slice(0, 10); }
-function hrefOf(ep) {
-  const u = ep.html_url || "";
-  const i = u.indexOf("episodes/");
+function relativeUrl(raw, marker) {
+  const u = raw || "";
+  const i = u.indexOf(marker);
   return i >= 0 ? u.slice(i) : u;
 }
+function withRevision(url, revision) {
+  if (!url || !revision) return url;
+  const sep = url.includes("?") ? "&" : "?";
+  return url + sep + "v=" + encodeURIComponent(revision);
+}
+function hrefOf(ep) {
+  return withRevision(relativeUrl(ep.html_url, "episodes/"), ep.revision);
+}
 function coverOf(ep) {
-  const u = ep.cover_url || "";
-  const i = u.indexOf("covers/");
-  return i >= 0 ? u.slice(i) : u;
+  return withRevision(relativeUrl(ep.cover_url, "covers/"), ep.revision);
 }
 function fmtBytes(n) {
   if (n < 1024) return n + " B";
@@ -162,6 +195,13 @@ function renderList() {
     mode.className = "badge" + (ep.audio_mode === "offline" ? " off" : "");
     mode.textContent = ep.audio_mode === "offline" ? "离线" : "在线";
     meta.append(when, dur, mode);
+    if (updatedGuids.has(ep.guid)) {
+      const upd = document.createElement("span");
+      upd.className = "badge upd";
+      upd.textContent = "有更新";
+      meta.appendChild(upd);
+      el.dataset.updated = "1";
+    }
     if (archived) {
       const arch = document.createElement("span");
       arch.className = "badge arch";
@@ -173,6 +213,56 @@ function renderList() {
     list.appendChild(el);
   });
 }
+
+async function detectCachedUpdates(items) {
+  const out = new Set();
+  if (!("caches" in window)) return out;
+  try {
+    const cache = await caches.open(MEDIA);
+    const keys = await cache.keys();
+    const byPath = new Map();
+    for (const req of keys) {
+      const u = new URL(req.url);
+      if (!u.pathname.includes("/episodes/")) continue;
+      if (!byPath.has(u.pathname)) byPath.set(u.pathname, new Set());
+      byPath.get(u.pathname).add(u.searchParams.get("v") || "");
+    }
+    for (const ep of items) {
+      if (!ep || ep.archived || !ep.guid || !ep.revision || !ep.html_url) continue;
+      const path = new URL(relativeUrl(ep.html_url, "episodes/"), location.href).pathname;
+      const cached = byPath.get(path);
+      if (cached && cached.size && !cached.has(String(ep.revision))) {
+        out.add(ep.guid);
+      }
+    }
+  } catch (e) {
+    console.warn("cache update check failed", e);
+  }
+  return out;
+}
+
+function hideUpdateNotice() {
+  document.getElementById("updateNotice").classList.remove("show");
+}
+
+function showUpdateNotice() {
+  const n = updatedGuids.size;
+  if (!n) {
+    hideUpdateNotice();
+    return;
+  }
+  document.getElementById("updateTitle").textContent = "已缓存节目有更新";
+  document.getElementById("updateText").textContent =
+    "检测到 " + n + " 期已缓存内容有新版。打开对应节目会自动获取最新版。";
+  document.getElementById("updateNotice").classList.add("show");
+}
+
+document.getElementById("updateDismiss").onclick = hideUpdateNotice;
+document.getElementById("updateView").onclick = () => {
+  hideUpdateNotice();
+  const first = document.querySelector('[data-updated="1"]');
+  if (first) first.scrollIntoView({ behavior: "smooth", block: "center" });
+};
 
 async function cacheBytes() {
   if (!("caches" in window)) return 0;
@@ -205,6 +295,9 @@ document.getElementById("clear").onclick = async () => {
     const keys = await caches.keys();
     await Promise.all(keys.filter((k) => k === MEDIA || k.indexOf("bp-") === 0).map((k) => caches.delete(k)));
   }
+  updatedGuids.clear();
+  hideUpdateNotice();
+  renderList();
   await showCache();
 };
 
@@ -213,8 +306,10 @@ async function load() {
   rows = await res.json();
   if (!Array.isArray(rows)) rows = [];
   rows.sort((a, b) => String(b.pub_date || "").localeCompare(String(a.pub_date || "")));
+  updatedGuids = await detectCachedUpdates(rows);
   renderChips();
   renderList();
+  showUpdateNotice();
 }
 
 if ("serviceWorker" in navigator) {

@@ -12,6 +12,7 @@ The whole site is kept under 1 GiB by archiving the oldest offline players.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -24,7 +25,7 @@ from datetime import datetime, timezone
 PUBLIC_FIELDS = (
     "show_id", "guid", "show", "title", "episode", "pub_date", "duration_sec",
     "audio_mode", "dynamic_ads", "html_url", "cover_url", "size_bytes", "speakers",
-    "created_at", "archived",
+    "revision", "created_at", "archived",
 )
 MAX_ATTEMPTS = 3
 MAX_FILE_BYTES = 100 * 1024 * 1024
@@ -260,6 +261,20 @@ def _ctype(ext: str) -> str:
     return {".jpg": ".jpg", ".jpeg": ".jpg", ".png": ".png", ".webp": ".webp"}.get(ext, ".jpg")
 
 
+def content_revision(*paths: str) -> str:
+    """Stable cache-busting token for one published episode."""
+    h = hashlib.sha256()
+    found = False
+    for path in paths:
+        if not path or not os.path.isfile(path):
+            continue
+        found = True
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                h.update(chunk)
+    return h.hexdigest()[:12] if found else ""
+
+
 def public_entry(ep, res, base, created_at):
     slug = res.get("slug") or ep["slug"]
     show_id = ep["show_id"]
@@ -458,10 +473,14 @@ def stage(args):
             continue
         entry, html_rel, cover_rel = public_entry(ep, res, base, now_s)
         entry["size_bytes"] = os.path.getsize(html_path)
+        cover_path = os.path.join(folder, res["cover_file"]) if res.get("cover_file") else ""
+        entry["revision"] = content_revision(
+            html_path,
+            cover_path if cover_rel and os.path.isfile(cover_path) else "",
+        )
         dest_html = os.path.join(args.out, *html_rel.split("/"))
         os.makedirs(os.path.dirname(dest_html), exist_ok=True)
         shutil.copy2(html_path, dest_html)
-        cover_path = os.path.join(folder, res["cover_file"]) if res.get("cover_file") else ""
         if cover_rel and cover_path and os.path.isfile(cover_path):
             dest_cover = os.path.join(args.out, *cover_rel.split("/"))
             os.makedirs(os.path.dirname(dest_cover), exist_ok=True)

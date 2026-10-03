@@ -17,6 +17,7 @@
       "Logan Plant",
       "Brian Altano"
     ],
+    "revision": "",
     "created_at": "2026-10-03T04:17:44.997374+00:00",
     "archived": false
   },
@@ -39,6 +40,7 @@
       "Max Scoville",
       "Ryan McCaffrey"
     ],
+    "revision": "",
     "created_at": "2026-10-03T04:17:44.997374+00:00",
     "archived": false
   },
@@ -54,13 +56,15 @@
     "dynamic_ads": false,
     "html_url": "https://lzcyx.github.io/bilingual-podcast/episodes/opp/2026-10-03-episode-549-friendly-ghosts.html",
     "cover_url": "https://lzcyx.github.io/bilingual-podcast/covers/opp/2026-10-03-episode-549-friendly-ghosts.jpg",
-    "size_bytes": 236161,
+    "size_bytes": 236228,
     "speakers": [
       "Tim Turi",
       "Kristen Zitani",
-      "Erika Ishii",
-      "Ad"
+      "Atsu",
+      "Ad",
+      "Erika Ishii"
     ],
+    "revision": "4070e87f9a78",
     "created_at": "2026-10-03T05:09:47.634726+00:00",
     "archived": false
   },
@@ -83,6 +87,7 @@
       "Sam Claiborn",
       "Nick Limon"
     ],
+    "revision": "",
     "created_at": "2026-10-03T04:17:44.997374+00:00",
     "archived": false
   },
@@ -104,6 +109,7 @@
       "Ad",
       "Matt"
     ],
+    "revision": "",
     "created_at": "2026-10-03T04:17:44.997374+00:00",
     "archived": false
   }

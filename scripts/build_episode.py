@@ -95,6 +95,17 @@ def parse_test_json(text: str):
         return None
 
 
+def copy_failure_diagnostics(wd: str, out: str):
+    """Copy reproducible translation diagnostics into the uploaded failure artifact."""
+    src = os.path.join(wd, "translate_debug")
+    if not os.path.isdir(src):
+        return
+    dst = os.path.join(out, "diagnostics", "translate")
+    shutil.rmtree(dst, ignore_errors=True)
+    shutil.copytree(src, dst)
+    print(f"saved translation diagnostics: {dst}", flush=True)
+
+
 def _usage_line(usage: dict) -> str:
     if not usage or not usage.get("calls"):
         return "tokens: 没有调用 DeepSeek"
@@ -321,11 +332,13 @@ def main():
               f"{os.path.getsize(html) / 1e6:.2f} MB", flush=True)
     except StepError as e:
         print("FAILED:", redact(e), flush=True)
+        copy_failure_diagnostics(wd, out)
         dump(False, e.infra, str(e))
         sys.exit(2 if e.infra else 1)
     except Exception:
         err = traceback.format_exc()
         print(redact(err), flush=True)
+        copy_failure_diagnostics(wd, out)
         dump(False, False, err)
         sys.exit(1)
 

@@ -7,6 +7,7 @@ import glob
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -142,20 +143,28 @@ def _source_subset(body: str, src_map: dict, keys) -> str:
 
 
 def _take(obj, src_map: dict, keys):
+    """Return accepted parts plus a reason for every rejected key."""
     got = _groups(obj)
-    good, bad = {}, []
+    good, bad = {}, {}
     for key in keys:
         if key not in got:
-            bad.append(key)
+            bad[key] = "missing key"
             continue
         need = _need(key)
-        parts = _fit_parts(got.get(key))
-        if _usable(parts, need):
-            good[key] = parts
-        else:
-            bad.append(key)
+        raw = got.get(key)
+        if not isinstance(raw, list):
+            bad[key] = f"parts is {type(raw).__name__}, need list[{need}]"
+            continue
+        parts = _fit_parts(raw)
+        if len(parts) != need:
+            bad[key] = f"{len(parts)} parts, need {need}"
+            continue
+        empty = [str(i + 1) for i, p in enumerate(parts) if not p or p == "［未译］"]
+        if empty:
+            bad[key] = "empty/untranslated part(s): " + ",".join(empty)
+            continue
+        good[key] = parts
     return good, bad
-
 
 def _format(src_map: dict, parts_by_key: dict) -> str:
     return "\n".join(key + "\t" + "｜".join(parts_by_key[key]) for key in src_map) + "\n"
@@ -174,13 +183,32 @@ def _bad_keys_from_check(log: str, src_map: dict) -> list[str]:
     return bad
 
 
+def _debug_write(path: str, text: str):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+
+
+def _debug_json(path: str, obj):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, ensure_ascii=False, indent=2)
+        f.write("\n")
+
+
 def _translate_block(client, wd, sp, lang, glossary):
     stem = os.path.basename(sp).replace(".src.txt", "")
     src_map, _ = tr_check.parse(sp)
     body = open(sp, encoding="utf-8").read()
     dest = sp.replace(".src.txt", f".{lang}.txt")
+    debug_dir = os.path.join(wd, "translate_debug", stem)
+    shutil.rmtree(debug_dir, ignore_errors=True)
+    os.makedirs(debug_dir, exist_ok=True)
+    _debug_write(os.path.join(debug_dir, "source.txt"), body)
+    _debug_write(os.path.join(debug_dir, "glossary.txt"), (glossary or "(none)") + "\n")
     errors = ""
     accepted: dict = {}
+
     for attempt in range(1, 4):
         pending = [k for k in src_map if k not in accepted]
         user = f"Glossary:\n{glossary or '(none)'}\n\nSource block:\n{_source_subset(body, src_map, pending)}"
@@ -189,26 +217,52 @@ def _translate_block(client, wd, sp, lang, glossary):
                 "\n\nYour previous output failed checks. Return JSON for every key above, "
                 f"with one non-empty part per ' | ' piece:\n{errors[:2500]}"
             )
+
+        reasoning = "disabled" if attempt == 1 else "high"
+        messages = [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}]
+        prefix = os.path.join(debug_dir, f"attempt-{attempt}")
+        _debug_json(prefix + ".request.json", {
+            "api": client.cfg.get("base_url"),
+            "model": client.cfg.get("model"),
+            "temperature": 0.2,
+            "max_tokens": 8192,
+            "response_format": {"type": "json_object"},
+            "thinking": reasoning,
+            "pending_keys": pending,
+            "messages": messages,
+        })
+
         try:
             text = client.chat(
-                [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}],
+                messages,
                 step="translate", temperature=0.2, json_mode=True, max_tokens=8192,
-                extra={"block": stem, "attempt": attempt})
+                extra={"block": stem, "attempt": attempt, "thinking": reasoning},
+                thinking=reasoning)
+            _debug_write(prefix + ".response.txt", text + ("\n" if not text.endswith("\n") else ""))
             obj = parse_json_content(text)
+            _debug_json(prefix + ".response.json", obj)
+
             good, bad = _take(obj, src_map, pending)
             accepted.update(good)
             if bad:
-                errors = "still missing or empty: " + ", ".join(bad[:12])
-                print(f"  {stem} attempt {attempt}: {errors}", flush=True)
+                errors = "; ".join(f"{key}: {reason}" for key, reason in list(bad.items())[:12])
+                _debug_write(prefix + ".error.txt", errors + "\n")
+                print(f"  {stem} attempt {attempt} ({reasoning}): {errors}", flush=True)
                 continue
+
             rendered = _format(src_map, accepted)
             with open(dest, "w", encoding="utf-8") as f:
                 f.write(rendered)
             rc, log = _check(wd, stem)
+            _debug_write(prefix + ".check.log", log)
             print(log, end="" if log.endswith("\n") or not log else "\n", flush=True)
             if rc == 0:
+                # Successful blocks do not need to bloat artifacts; diagnostics are retained only on failure.
+                shutil.rmtree(debug_dir, ignore_errors=True)
                 return {"stem": stem, "ok": True}
+
             errors = log
+            _debug_write(prefix + ".error.txt", errors)
             bad_quality = _bad_keys_from_check(log, src_map)
             if attempt < 3:
                 if bad_quality:
@@ -220,9 +274,15 @@ def _translate_block(client, wd, sp, lang, glossary):
             raise
         except (LLMError, Exception) as e:
             errors = str(e)
-            print(f"  {stem} attempt {attempt}: {e}", flush=True)
+            _debug_write(prefix + ".error.txt", errors + "\n")
+            print(f"  {stem} attempt {attempt} ({reasoning}): {e}", flush=True)
+
     missing = [key for key in src_map if key not in accepted]
-    raise SystemExit(f"{stem}: translation failed quality checks after 3 attempts; pending={missing[:12]}; {errors[:1200]}")
+    _debug_write(os.path.join(debug_dir, "final-error.txt"),
+                 f"pending={missing[:12]}\n{errors[:1200]}\n")
+    raise SystemExit(
+        f"{stem}: translation failed quality checks after 3 attempts; "
+        f"pending={missing[:12]}; diagnostics={debug_dir}; {errors[:1200]}")
 
 
 def main():

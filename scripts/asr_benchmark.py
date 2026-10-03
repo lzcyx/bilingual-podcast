@@ -127,7 +127,7 @@ def main():
     ap.add_argument("audio")
     ap.add_argument("--workdir", required=True)
     ap.add_argument("--result", required=True)
-    ap.add_argument("--label", required=True)
+    ap.add_argument("--label", required=True)\n    ap.add_argument("--source", default="custom")
     ap.add_argument("--model", default="large-v3-turbo")
     ap.add_argument("--model-dir")
     ap.add_argument("--lang", default="en")

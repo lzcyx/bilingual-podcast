@@ -4,8 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       audio_url:
-        description: "Direct MP3/audio URL used to build one shared benchmark clip"
-        required: true
+        description: "Optional direct audio URL; when set it is benchmarked in addition to the three preset podcasts"
+        required: false
+        default: ""
         type: string
       start_seconds:
         description: "Clip start in seconds"
@@ -13,9 +14,9 @@ on:
         default: "0"
         type: string
       duration_seconds:
-        description: "Clip duration in seconds (1200 = 20 min)"
+        description: "Clip duration in seconds (900 = 15 min)"
         required: false
-        default: "1200"
+        default: "900"
         type: string
 
 permissions:
@@ -31,26 +32,75 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - uses: actions/checkout@v4
       - name: Install ffmpeg
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
-      - name: Download exact source once and make shared clip
+      - name: Resolve latest preset episodes and make shared clips
         env:
-          AUDIO_URL: ${{ inputs.audio_url }}
+          CUSTOM_AUDIO_URL: ${{ inputs.audio_url }}
           START_SECONDS: ${{ inputs.start_seconds }}
           DURATION_SECONDS: ${{ inputs.duration_seconds }}
         run: |
-          curl -L --fail --retry 3 --connect-timeout 30 \
-            -A "Mozilla/5.0" "$AUDIO_URL" -o source-audio
-          ffmpeg -y -loglevel error \
-            -ss "$START_SECONDS" -t "$DURATION_SECONDS" \
-            -i source-audio -vn -ac 1 -ar 44100 -c:a libmp3lame -q:a 2 bench.mp3
-          ffprobe -v error -show_entries format=duration,size -of json bench.mp3
+          python - <<'PY'
+          import json, os, subprocess, sys
+          sys.path.insert(0, "scripts")
+          from feeds import download, parse_rss
+
+          sources = [
+              ("opp", "Official PlayStation Podcast", "https://playstation.libsyn.com/rss"),
+              ("ignuk", "IGN UK Podcast", "https://rss.pdrl.fm/6213a6/feeds.megaphone.fm/ignukpod"),
+              ("nvc", "Nintendo Voice Chat", "https://rss.pdrl.fm/52ee62/feeds.megaphone.fm/nvc"),
+          ]
+          os.makedirs("benchmark-input", exist_ok=True)
+          manifest = []
+          for sid, name, rss in sources:
+              items = parse_rss(download(rss), sid, name, rss)
+              ep = next((x for x in items if x.get("audio_url") and not x.get("video")), None)
+              if not ep:
+                  raise SystemExit(f"{sid}: no playable episode in RSS")
+              manifest.append({
+                  "source": sid, "show": name, "title": ep.get("title") or "",
+                  "audio_url": ep["audio_url"], "rss": rss,
+              })
+
+          custom = os.environ.get("CUSTOM_AUDIO_URL", "").strip()
+          if custom:
+              manifest.append({
+                  "source": "custom", "show": "Custom audio", "title": "Custom audio",
+                  "audio_url": custom, "rss": "",
+              })
+
+          start = os.environ["START_SECONDS"]
+          duration = os.environ["DURATION_SECONDS"]
+          for item in manifest:
+              sid = item["source"]
+              raw = f"benchmark-input/{sid}.source"
+              out = f"benchmark-input/{sid}.mp3"
+              print(f'{sid}: {item["title"]} -> {item["audio_url"]}', flush=True)
+              subprocess.run([
+                  "curl", "-L", "--fail", "--retry", "3", "--connect-timeout", "30",
+                  "-A", "Mozilla/5.0", item["audio_url"], "-o", raw,
+              ], check=True)
+              subprocess.run([
+                  "ffmpeg", "-y", "-loglevel", "error",
+                  "-ss", start, "-t", duration, "-i", raw,
+                  "-vn", "-ac", "1", "-ar", "44100", "-c:a", "libmp3lame", "-q:a", "2", out,
+              ], check=True)
+              os.remove(raw)
+          with open("benchmark-input/manifest.json", "w", encoding="utf-8") as f:
+              json.dump(manifest, f, ensure_ascii=False, indent=2)
+              f.write("\n")
+          PY
+          cat benchmark-input/manifest.json
+          for f in benchmark-input/*.mp3; do
+            ffprobe -v error -show_entries format=duration,size -of json "$f"
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: asr-benchmark-input
-          path: bench.mp3
+          path: benchmark-input/
           retention-days: 3
           if-no-files-found: error
 
@@ -76,40 +126,14 @@ jobs:
 
   benchmark:
     needs: [prepare, warm-model]
+    if: ${{ matrix.source != 'custom' || inputs.audio_url != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - label: 1x4-static
-            jobs: 1
-            threads: 4
-            schedule: static
-          - label: 1x5-static
-            jobs: 1
-            threads: 5
-            schedule: static
-          - label: 2x2-static
-            jobs: 2
-            threads: 2
-            schedule: static
-          - label: 2x2-dynamic
-            jobs: 2
-            threads: 2
-            schedule: dynamic
-          - label: 2x3-dynamic
-            jobs: 2
-            threads: 3
-            schedule: dynamic
-          - label: 4x1-static
-            jobs: 4
-            threads: 1
-            schedule: static
-          - label: 4x1-dynamic
-            jobs: 4
-            threads: 1
-            schedule: dynamic
+        source: [opp, ignuk, nvc, custom]
+        config: [2x2-static, 4x1-dynamic, 5x1-dynamic]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -128,29 +152,37 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg time
           pip install faster-whisper numpy
-      - name: Run ${{ matrix.label }}
+      - name: Run ${{ matrix.source }} / ${{ matrix.config }}
+        shell: bash
         run: |
-          mkdir -p "benchmark/${{ matrix.label }}"
-          /usr/bin/time -v -o "benchmark/${{ matrix.label }}/time.txt" \
-            python scripts/asr_benchmark.py benchmark-input/bench.mp3 \
-              --workdir "benchmark/${{ matrix.label }}/work" \
-              --result "benchmark/${{ matrix.label }}/result.json" \
-              --label "${{ matrix.label }}" \
-              --jobs "${{ matrix.jobs }}" \
-              --threads "${{ matrix.threads }}" \
-              --schedule "${{ matrix.schedule }}"
+          case "${{ matrix.config }}" in
+            2x2-static)  JOBS=2; THREADS=2; SCHEDULE=static ;;
+            4x1-dynamic) JOBS=4; THREADS=1; SCHEDULE=dynamic ;;
+            5x1-dynamic) JOBS=5; THREADS=1; SCHEDULE=dynamic ;;
+            *) exit 2 ;;
+          esac
+          OUT="benchmark/${{ matrix.source }}/${{ matrix.config }}"
+          mkdir -p "$OUT"
+          /usr/bin/time -v -o "$OUT/time.txt" \
+            python scripts/asr_benchmark.py "benchmark-input/${{ matrix.source }}.mp3" \
+              --workdir "$OUT/work" \
+              --result "$OUT/result.json" \
+              --label "${{ matrix.config }}" \
+              --source "${{ matrix.source }}" \
+              --jobs "$JOBS" --threads "$THREADS" --schedule "$SCHEDULE"
       - name: Show result
         if: always()
         run: |
-          test ! -f "benchmark/${{ matrix.label }}/result.json" || cat "benchmark/${{ matrix.label }}/result.json"
-          test ! -f "benchmark/${{ matrix.label }}/time.txt" || cat "benchmark/${{ matrix.label }}/time.txt"
+          OUT="benchmark/${{ matrix.source }}/${{ matrix.config }}"
+          test ! -f "$OUT/result.json" || cat "$OUT/result.json"
+          test ! -f "$OUT/time.txt" || cat "$OUT/time.txt"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: asr-bench-${{ matrix.label }}
+          name: asr-bench-${{ matrix.source }}-${{ matrix.config }}
           path: |
-            benchmark/${{ matrix.label }}/result.json
-            benchmark/${{ matrix.label }}/time.txt
+            benchmark/${{ matrix.source }}/${{ matrix.config }}/result.json
+            benchmark/${{ matrix.source }}/${{ matrix.config }}/time.txt
           retention-days: 7
           if-no-files-found: warn
 
@@ -163,84 +195,86 @@ jobs:
         with:
           pattern: asr-bench-*
           path: results
-      - name: Build comparison table
+      - name: Build comparison tables
         run: |
           python - <<'PY'
-          import glob, json, os, re
+          import glob, json, os, re, statistics
 
-          order = [
-              "1x4-static", "1x5-static",
-              "2x2-static", "2x2-dynamic", "2x3-dynamic",
-              "4x1-static", "4x1-dynamic",
-          ]
+          configs = ["2x2-static", "4x1-dynamic", "5x1-dynamic"]
+          source_order = ["opp", "ignuk", "nvc", "custom"]
 
           def time_stats(path):
-              out = {"cpu": "", "rss_kb": ""}
+              out = {"cpu": "", "rss_kb": 0}
               if not os.path.exists(path):
                   return out
               text = open(path, encoding="utf-8", errors="replace").read()
               m = re.search(r"Percent of CPU this job got:\s*(\S+)", text)
-              if m:
-                  out["cpu"] = m.group(1)
+              if m: out["cpu"] = m.group(1)
               m = re.search(r"Maximum resident set size \(kbytes\):\s*(\d+)", text)
-              if m:
-                  out["rss_kb"] = int(m.group(1))
+              if m: out["rss_kb"] = int(m.group(1))
               return out
 
           rows = []
           for p in glob.glob("results/**/result.json", recursive=True):
               r = json.load(open(p, encoding="utf-8"))
-              t = time_stats(os.path.join(os.path.dirname(p), "time.txt"))
-              worker_work = ", ".join(f'{w["work_seconds"]:.1f}' for w in r.get("workers", []))
-              rows.append({**r, **t, "worker_work": worker_work})
+              r.update(time_stats(os.path.join(os.path.dirname(p), "time.txt")))
+              rows.append(r)
 
-          rows.sort(key=lambda r: order.index(r["label"]) if r["label"] in order else 999)
-          fastest = min((r for r in rows if r.get("elapsed_seconds") is not None),
-                        key=lambda r: r["elapsed_seconds"], default=None)
+          rows.sort(key=lambda r: (
+              source_order.index(r["source"]) if r["source"] in source_order else 99,
+              configs.index(r["label"]) if r["label"] in configs else 99,
+          ))
+          sources = [s for s in source_order if any(r["source"] == s for r in rows)]
+          lookup = {(r["source"], r["label"]): r for r in rows}
 
           lines = [
-              "# ASR benchmark",
-              "",
-              f"Completed configurations: **{len(rows)}/{len(order)}**",
-              "",
-              "| config | scheduling | compute threads | elapsed | RTF | CPU | max RSS | worker inference seconds |",
-              "|---|---|---:|---:|---:|---:|---:|---|",
+              "# ASR multi-source benchmark", "",
+              "| source | config | elapsed | RTF | CPU | max RSS |",
+              "|---|---|---:|---:|---:|---:|",
           ]
           for r in rows:
-              label = r["label"]
-              if fastest and label == fastest["label"]:
-                  label = f"**{label}**"
               rss = f'{r["rss_kb"] / 1024:.0f} MiB' if r.get("rss_kb") else ""
               lines.append(
-                  f'| {label} | {r["schedule"]} | {r["total_compute_threads"]} | '
-                  f'{r["elapsed_seconds"]:.1f}s | {r["realtime_factor"]:.3f} | '
-                  f'{r.get("cpu", "")} | {rss} | {r["worker_work"]} |'
+                  f'| {r["source"]} | {r["label"]} | {r["elapsed_seconds"]:.1f}s | '
+                  f'{r["realtime_factor"]:.3f} | {r.get("cpu", "")} | {rss} |'
               )
 
-          missing = [x for x in order if x not in {r["label"] for r in rows}]
-          if fastest:
-              lines += [
-                  "",
-                  f'Fastest measured configuration: **{fastest["label"]}** '
-                  f'({fastest["elapsed_seconds"]:.1f}s, RTF {fastest["realtime_factor"]:.3f}).',
-              ]
-          if missing:
-              lines += ["", "No completed result JSON for: " + ", ".join(missing) + "."]
+          lines += ["", "## Cross-source comparison", ""]
+          header = "| config | " + " | ".join(f"{s} RTF" for s in sources) + " | mean RTF | vs 2x2 static |"
+          lines += [header, "|" + "---|" * (len(sources) + 3)]
+          means = {}
+          for cfg in configs:
+              vals = [lookup[(s, cfg)]["realtime_factor"] for s in sources if (s, cfg) in lookup]
+              means[cfg] = statistics.mean(vals) if vals else None
+          baseline = means.get("2x2-static")
+          for cfg in configs:
+              vals = []
+              for s in sources:
+                  r = lookup.get((s, cfg))
+                  vals.append(f'{r["realtime_factor"]:.3f}' if r else "—")
+              mean = means[cfg]
+              speedup = ((baseline / mean - 1) * 100) if baseline and mean else None
+              speed = f"{speedup:+.1f}%" if speedup is not None else "—"
+              lines.append(f'| {cfg} | ' + " | ".join(vals) + f' | {mean:.3f} | {speed} |')
+
+          complete = [(cfg, means[cfg]) for cfg in configs if means[cfg] is not None]
+          if complete:
+              best = min(complete, key=lambda x: x[1])
+              lines += ["", f'Lowest mean RTF: **{best[0]}** ({best[1]:.3f}).']
+
           lines += [
-              "",
-              "Notes:",
-              "- The shared input clip is created once, so every matrix job transcribes identical audio.",
+              "", "Notes:",
+              "- Presets automatically use the latest playable RSS episode from PlayStation, IGN UK, and Nintendo Voice Chat.",
+              "- Each source clip is created once and reused by all configurations.",
+              "- Default clip length is 15 minutes; custom audio_url adds a fourth source.",
+              "- 2x2-static is the production baseline; 4x1-dynamic is the first-run winner; 5x1-dynamic tests process oversubscription.",
               "- Audio download, clipping, WAV conversion and chunk creation are outside the transcription timer.",
-              "- Timed work includes one model load per worker plus all Whisper decoding.",
-              "- static = production-style round-robin chunk assignment; dynamic = next free worker takes the next chunk.",
           ]
           text = "\n".join(lines) + "\n"
           print(text)
           open("benchmark-summary.md", "w", encoding="utf-8").write(text)
-          summary = os.environ.get("GITHUB_STEP_SUMMARY")
-          if summary:
-              with open(summary, "a", encoding="utf-8") as f:
-                  f.write(text)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+              f.write(text)
           PY
       - uses: actions/upload-artifact@v4
         with:

@@ -126,7 +126,6 @@ jobs:
 
   benchmark:
     needs: [prepare, warm-model]
-    if: ${{ matrix.source != 'custom' || inputs.audio_url != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     strategy:
@@ -153,6 +152,7 @@ jobs:
           sudo apt-get install -y ffmpeg time
           pip install faster-whisper numpy
       - name: Run ${{ matrix.source }} / ${{ matrix.config }}
+        if: ${{ matrix.source != 'custom' || inputs.audio_url != '' }}
         shell: bash
         run: |
           case "${{ matrix.config }}" in
@@ -171,13 +171,13 @@ jobs:
               --source "${{ matrix.source }}" \
               --jobs "$JOBS" --threads "$THREADS" --schedule "$SCHEDULE"
       - name: Show result
-        if: always()
+        if: ${{ always() && (matrix.source != 'custom' || inputs.audio_url != '') }}
         run: |
           OUT="benchmark/${{ matrix.source }}/${{ matrix.config }}"
           test ! -f "$OUT/result.json" || cat "$OUT/result.json"
           test ! -f "$OUT/time.txt" || cat "$OUT/time.txt"
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: ${{ always() && (matrix.source != 'custom' || inputs.audio_url != '') }}
         with:
           name: asr-bench-${{ matrix.source }}-${{ matrix.config }}
           path: |

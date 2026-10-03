@@ -158,6 +158,31 @@ jobs:
         run: |
           set +e
           failures=0
+          monitor_resources() {
+            log="$1"
+            printf "ts\tmem_available_kb\tcgroup_current_bytes\tcgroup_max_bytes\toom\toom_kill\tpython_rss_kb\tpython_cpu_pct\n" > "$log"
+            while true; do
+              ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              mem_avail="$(awk '/MemAvailable:/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)"
+              cg_current="$(cat /sys/fs/cgroup/memory.current 2>/dev/null || cat /sys/fs/cgroup/memory/memory.usage_in_bytes 2>/dev/null || echo 0)"
+              cg_max="$(cat /sys/fs/cgroup/memory.max 2>/dev/null || cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null || echo 0)"
+              if [ -r /sys/fs/cgroup/memory.events ]; then
+                oom="$(awk '$1=="oom" {print $2}' /sys/fs/cgroup/memory.events)"
+                oom_kill="$(awk '$1=="oom_kill" {print $2}' /sys/fs/cgroup/memory.events)"
+              else
+                oom=0
+                oom_kill=0
+              fi
+              py_stats="$(ps -eo comm=,rss=,pcpu= | awk '$1 ~ /^python/ {rss+=$2; cpu+=$3} END {printf "%d %.1f", rss, cpu}')"
+              py_rss="${py_stats%% *}"
+              py_cpu="${py_stats#* }"
+              printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+                "$ts" "${mem_avail:-0}" "${cg_current:-0}" "${cg_max:-0}" \
+                "${oom:-0}" "${oom_kill:-0}" "${py_rss:-0}" "${py_cpu:-0}" | tee -a "$log"
+              sleep 5
+            done
+          }
+
           run_one() {
             config="$1"
             jobs="$2"
@@ -166,6 +191,8 @@ jobs:
             out="benchmark/${{ matrix.source }}/$config"
             mkdir -p "$out"
             echo "::group::${{ matrix.source }} / $config"
+            monitor_resources "$out/resources.tsv" &
+            monitor_pid=$!
             /usr/bin/time -v -o "$out/time.txt" \
               python scripts/asr_benchmark.py "benchmark-input/${{ matrix.source }}.mp3" \
                 --workdir "$out/work" \
@@ -174,6 +201,14 @@ jobs:
                 --source "${{ matrix.source }}" \
                 --jobs "$jobs" --threads "$threads" --schedule "$schedule"
             rc=$?
+            kill "$monitor_pid" 2>/dev/null || true
+            wait "$monitor_pid" 2>/dev/null || true
+            echo "--- final resource sample ---"
+            tail -n 2 "$out/resources.tsv" || true
+            if [ -r /sys/fs/cgroup/memory.events ]; then
+              echo "--- cgroup memory.events ---"
+              cat /sys/fs/cgroup/memory.events || true
+            fi
             test ! -f "$out/result.json" || cat "$out/result.json"
             test ! -f "$out/time.txt" || cat "$out/time.txt"
             echo "::endgroup::"

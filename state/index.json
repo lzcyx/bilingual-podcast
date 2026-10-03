@@ -43,6 +43,28 @@
     "archived": false
   },
   {
+    "show_id": "opp",
+    "guid": "723710fd-0423-4638-8b4f-2a0ecb0fab27",
+    "show": "Official PlayStation Podcast",
+    "title": "Friendly Ghosts",
+    "episode": "549",
+    "pub_date": "2026-10-02T17:34:00+00:00",
+    "duration_sec": 3439,
+    "audio_mode": "online",
+    "dynamic_ads": false,
+    "html_url": "https://lzcyx.github.io/bilingual-podcast/episodes/opp/2026-10-03-episode-549-friendly-ghosts.html",
+    "cover_url": "https://lzcyx.github.io/bilingual-podcast/covers/opp/2026-10-03-episode-549-friendly-ghosts.jpg",
+    "size_bytes": 236161,
+    "speakers": [
+      "Tim Turi",
+      "Kristen Zitani",
+      "Erika Ishii",
+      "Ad"
+    ],
+    "created_at": "2026-10-03T05:09:47.634726+00:00",
+    "archived": false
+  },
+  {
     "show_id": "gamescoop",
     "guid": "0cf189c4-be7f-11f1-bc31-739e0c514be3",
     "show": "Game Scoop!",

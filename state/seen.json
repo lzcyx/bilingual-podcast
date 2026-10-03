@@ -33316,6 +33316,15 @@
       "pub_date": "2012-09-24T15:52:00+00:00",
       "reason": "bootstrap",
       "marked_at": "2026-10-02T13:12:09.398216+00:00"
+    },
+    "opp\t723710fd-0423-4638-8b4f-2a0ecb0fab27": {
+      "show_id": "opp",
+      "guid": "723710fd-0423-4638-8b4f-2a0ecb0fab27",
+      "title": "Episode 549: Friendly Ghosts",
+      "pub_date": "2026-10-02T17:34:00+00:00",
+      "reason": "published",
+      "marked_at": "2026-10-03T05:09:47.634726+00:00",
+      "slug": "2026-10-03-episode-549-friendly-ghosts"
     }
   }
 }

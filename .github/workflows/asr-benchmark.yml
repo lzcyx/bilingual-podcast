@@ -132,7 +132,7 @@ jobs:
       fail-fast: false
       matrix:
         source: [opp, ignuk, nvc, custom]
-        config: [2x2-static, 4x1-dynamic, 5x1-dynamic]
+        config: [2x2-static, 4x1-dynamic]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -158,7 +158,6 @@ jobs:
           case "${{ matrix.config }}" in
             2x2-static)  JOBS=2; THREADS=2; SCHEDULE=static ;;
             4x1-dynamic) JOBS=4; THREADS=1; SCHEDULE=dynamic ;;
-            5x1-dynamic) JOBS=5; THREADS=1; SCHEDULE=dynamic ;;
             *) exit 2 ;;
           esac
           OUT="benchmark/${{ matrix.source }}/${{ matrix.config }}"
@@ -200,7 +199,7 @@ jobs:
           python - <<'PY'
           import glob, json, os, re, statistics
 
-          configs = ["2x2-static", "4x1-dynamic", "5x1-dynamic"]
+          configs = ["2x2-static", "4x1-dynamic"]
           source_order = ["opp", "ignuk", "nvc", "custom"]
 
           def time_stats(path):
@@ -268,7 +267,8 @@ jobs:
               "- Presets automatically use the latest playable RSS episode from PlayStation, IGN UK, and Nintendo Voice Chat.",
               "- Each source clip is created once and reused by all configurations.",
               "- Default clip length is 15 minutes; custom audio_url adds a fourth source.",
-              "- 2x2-static is the production baseline; 4x1-dynamic is the first-run winner; 5x1-dynamic tests process oversubscription.",
+              "- 2x2-static is the production baseline; 4x1-dynamic is the hosted-runner candidate.",
+              "- 5 float32 workers are omitted: on a 4-core, 16 GB runner the second chunk wave runs out of memory.",
               "- Audio download, clipping, WAV conversion and chunk creation are outside the transcription timer.",
           ]
           text = "\n".join(lines) + "\n"

@@ -143,7 +143,17 @@ def main():
 
     os.makedirs(args.workdir, exist_ok=True)
     cdir, chunks = prepare_chunks(args.audio, args.workdir, args.chunk)
-    workers = max(1, min(args.jobs, len(chunks)))
+    cpu = os.cpu_count() or 1
+    # One float32 large-v3-turbo copy per worker. Five of them OOM a 16 GB runner
+    # once the next chunk allocates while earlier workers are still decoding.
+    worker_cap = cpu if args.compute_type == "float32" else max(cpu, args.jobs)
+    workers = max(1, min(args.jobs, len(chunks), worker_cap))
+    if workers < args.jobs:
+        print(
+            f"capping workers {args.jobs} -> {workers} "
+            f"(compute_type={args.compute_type}, cpu={cpu})",
+            flush=True,
+        )
     total_audio_sec = chunks[-1][1] if chunks else 0.0
 
     print(

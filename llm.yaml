@@ -5,6 +5,5 @@ model: deepseek-flash
 temperature: 0.2
 # disabled sends thinking.type=disabled and reasoning_effort=none (no chain-of-thought).
 thinking: disabled
-# Off-peak (闲时) CNY per 1M tokens. Used only for the Actions cost estimate.
-price_input_per_mtok: 1
-price_output_per_mtok: 4
+# Cost in the Actions summary is estimated from DeepSeek's official peak/off-peak
+# USD table for deepseek-flash. See scripts/llm/client.py.

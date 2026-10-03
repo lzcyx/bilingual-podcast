@@ -195,6 +195,37 @@ class TranslateSalvageTests(unittest.TestCase):
         self.assertNotIn("［未译］", salvaged)
 
 
+class DeepSeekPriceTests(unittest.TestCase):
+    def test_peak_window_and_half_price_off_peak(self):
+        from datetime import datetime, timezone
+        from scripts.llm.client import is_peak, usage_summary
+        self.assertTrue(is_peak(datetime(2026, 10, 5, 2, 0, tzinfo=timezone.utc)))
+        self.assertTrue(is_peak(datetime(2026, 10, 5, 9, 59, tzinfo=timezone.utc)))
+        self.assertFalse(is_peak(datetime(2026, 10, 5, 4, 0, tzinfo=timezone.utc)))
+        self.assertFalse(is_peak(datetime(2026, 10, 5, 5, 0, tzinfo=timezone.utc)))
+        self.assertFalse(is_peak(datetime(2026, 10, 3, 2, 0, tzinfo=timezone.utc)))
+        peak = {"prompt_tokens": 1_000_000, "completion_tokens": 1_000_000,
+                "prompt_cache_hit_tokens": 0, "prompt_cache_miss_tokens": 1_000_000,
+                "ts": "2026-10-05T02:00:00+00:00"}
+        off = dict(peak, ts="2026-10-03T02:00:00+00:00")
+        hit = dict(peak, prompt_cache_hit_tokens=1_000_000, prompt_cache_miss_tokens=0)
+        with tempfile.TemporaryDirectory() as td:
+            path = os.path.join(td, "usage.jsonl")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(json.dumps(off) + "\n")
+            summary = usage_summary(path, {"model": "deepseek-flash"})
+            self.assertEqual(summary["band"], "off-peak")
+            self.assertEqual(summary["prompt_tokens"], 1_000_000)
+            self.assertEqual(summary["completion_tokens"], 1_000_000)
+            self.assertAlmostEqual(summary["cost_usd"], 0.75, places=4)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(json.dumps(peak) + "\n")
+                f.write(json.dumps(hit) + "\n")
+            mixed = usage_summary(path, {"model": "deepseek-flash"})
+            self.assertEqual(mixed["band"], "peak")
+            self.assertAlmostEqual(mixed["cost_usd"], 1.50 + 0.006 + 1.20, places=4)
+
+
 class PublishTests(unittest.TestCase):
     def test_attempts_infra_and_index_order(self):
         ep = {"show_id": "ignuk", "guid": "g", "title": "T", "pub_date": "2026-09-25T00:00:00+00:00",

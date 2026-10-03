@@ -207,6 +207,40 @@ def load_results(results_dir: str) -> dict:
     return found
 
 
+def _run_usage_line(results: dict) -> str:
+    totals = {
+        "calls": 0, "prompt_tokens": 0, "completion_tokens": 0,
+        "prompt_cache_hit_tokens": 0, "prompt_cache_miss_tokens": 0,
+        "cost_usd": 0.0, "peak_cost_usd": 0.0, "offpeak_cost_usd": 0.0,
+        "peak_calls": 0, "offpeak_calls": 0,
+    }
+    for res in results.values():
+        usage = ((res.get("report") or {}).get("usage") or {})
+        if not usage.get("calls"):
+            continue
+        for key in ("calls", "prompt_tokens", "completion_tokens",
+                    "prompt_cache_hit_tokens", "prompt_cache_miss_tokens",
+                    "peak_calls", "offpeak_calls"):
+            totals[key] += int(usage.get(key) or 0)
+        for key in ("cost_usd", "peak_cost_usd", "offpeak_cost_usd"):
+            totals[key] += float(usage.get(key) or 0)
+    if not totals["calls"]:
+        return ""
+    if totals["peak_calls"] and totals["offpeak_calls"]:
+        band = "mixed"
+    elif totals["peak_calls"]:
+        band = "peak"
+    else:
+        band = "off-peak"
+    totals["band"] = band
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    from llm.client import format_usage, price_note
+    totals["price_note"] = price_note(band)
+    for key in ("cost_usd", "peak_cost_usd", "offpeak_cost_usd"):
+        totals[key] = round(totals[key], 6)
+    return "DeepSeek：" + format_usage(totals)
+
+
 def load_keep_days(path: str) -> int:
     if not os.path.exists(path):
         return 60
@@ -489,6 +523,9 @@ def stage(args):
     if plan.get("bootstrapped_now"):
         lines.append(f"第一次运行：已把 **{len(plan['seen']['items'])}** 期现有节目标为已处理（没有补做）。")
     lines.append(f"本次上架 **{len(staged)}** 期。归档删除 **{len(deleted)}** 个离线文件。问题 **{len(problems)}**。")
+    usage_line = _run_usage_line(results)
+    if usage_line:
+        lines.append(usage_line)
     lines.append(f"站点大小 **{fmt_bytes(total)}**（上限 1 GB，单文件 < 100 MB）。保留天数 {keep_days}。")
     if over:
         lines.append("警告：删完过期离线版之后站点仍然超过 1 GB。")

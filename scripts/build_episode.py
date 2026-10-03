@@ -95,6 +95,14 @@ def parse_test_json(text: str):
         return None
 
 
+def _usage_line(usage: dict) -> str:
+    if not usage or not usage.get("calls"):
+        return "tokens: 没有调用 DeepSeek"
+    sys.path.insert(0, SCRIPTS)
+    from llm.client import format_usage
+    return "tokens: " + format_usage(usage)
+
+
 def write_summary(report: dict):
     path = os.environ.get("GITHUB_STEP_SUMMARY")
     if not path:
@@ -105,8 +113,7 @@ def write_summary(report: dict):
         "",
         f"- audio_mode: `{report.get('audio_mode')}`  dynamic_ads: `{report.get('dynamic_ads')}`",
         f"- total: **{report.get('total_seconds')}s**",
-        f"- tokens: in {usage.get('prompt_tokens', 0)} / out {usage.get('completion_tokens', 0)}  "
-        f"est. ¥{usage.get('cost_cny', 0)} ({usage.get('price_note', '')})",
+        f"- {_usage_line(usage)}",
         "",
         "| step | seconds |",
         "|---|---:|",

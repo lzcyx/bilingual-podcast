@@ -237,6 +237,8 @@ class Client:
             "model": self.cfg["model"],
             "prompt_tokens": int(usage.get("prompt_tokens") or 0),
             "completion_tokens": int(usage.get("completion_tokens") or 0),
+            "prompt_cache_hit_tokens": _cache_hit(usage),
+            "prompt_cache_miss_tokens": _cache_miss(usage),
             "ts": datetime.now(timezone.utc).isoformat(),
         }
         if extra:
@@ -273,6 +275,95 @@ def _looks_like_thinking_reject(detail: str) -> bool:
     return "thinking" in d or "reasoning_effort" in d or "reasoning" in d
 
 
+def _cache_hit(usage: dict) -> int:
+    details = usage.get("prompt_tokens_details") or {}
+    if not isinstance(details, dict):
+        details = {}
+    return int(usage.get("prompt_cache_hit_tokens") or details.get("cached_tokens") or 0)
+
+
+def _cache_miss(usage: dict) -> int:
+    return int(usage.get("prompt_cache_miss_tokens") or 0)
+
+
+# deepseek-flash peak USD per 1M tokens. Off-peak is half.
+# Peak: weekdays 01:00–04:00 and 06:00–10:00 UTC (Beijing 09:00–12:00 and 14:00–18:00).
+_PEAK_HIT = 0.006
+_PEAK_MISS = 0.30
+_PEAK_OUT = 1.20
+
+
+def is_peak(ts: datetime) -> bool:
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
+    ts = ts.astimezone(timezone.utc)
+    if ts.weekday() >= 5:
+        return False
+    minutes = ts.hour * 60 + ts.minute
+    return (60 <= minutes < 240) or (360 <= minutes < 600)
+
+
+def _parse_ts(raw) -> datetime:
+    if isinstance(raw, datetime):
+        return raw if raw.tzinfo else raw.replace(tzinfo=timezone.utc)
+    if not raw:
+        return datetime.now(timezone.utc)
+    try:
+        return datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except ValueError:
+        return datetime.now(timezone.utc)
+
+
+def _row_tokens(row: dict) -> tuple[int, int, int, int]:
+    prompt = int(row.get("prompt_tokens") or 0)
+    out = int(row.get("completion_tokens") or 0)
+    hit = int(row.get("prompt_cache_hit_tokens") or 0)
+    miss = int(row.get("prompt_cache_miss_tokens") or 0)
+    if hit + miss <= 0:
+        miss = prompt
+    elif hit + miss < prompt:
+        miss += prompt - hit - miss
+    return prompt, out, hit, miss
+
+
+def _row_cost(row: dict) -> tuple[float, bool]:
+    _prompt, out, hit, miss = _row_tokens(row)
+    peak = is_peak(_parse_ts(row.get("ts")))
+    factor = 1.0 if peak else 0.5
+    usd = (hit / 1e6 * _PEAK_HIT + miss / 1e6 * _PEAK_MISS + out / 1e6 * _PEAK_OUT) * factor
+    return usd, peak
+
+
+def price_note(band: str) -> str:
+    if band == "peak":
+        return ("deepseek-flash 高峰：输入未命中 $0.30 / 命中 $0.006 / 输出 $1.20 每百万 token"
+                "（北京时间工作日 9:00–12:00、14:00–18:00）")
+    if band == "mixed":
+        return ("deepseek-flash 按每条请求的时间计价。高峰是北京时间工作日 9:00–12:00、14:00–18:00，"
+                "其余是闲时、半价。未扣法定节假日。")
+    return ("deepseek-flash 闲时：输入未命中 $0.15 / 命中 $0.003 / 输出 $0.60 每百万 token"
+            "（高峰的半价。未扣法定节假日）")
+
+
+def format_usage(usage: dict) -> str:
+    if not usage or not usage.get("calls"):
+        return ""
+    band = usage.get("band") or "off-peak"
+    band_zh = {"peak": "高峰", "off-peak": "闲时", "mixed": "高峰+闲时"}.get(band, band)
+    split = ""
+    if band == "mixed":
+        split = (f"（高峰 ${float(usage.get('peak_cost_usd') or 0):.4f}"
+                 f" + 闲时 ${float(usage.get('offpeak_cost_usd') or 0):.4f}）")
+    return (
+        f"输入 {int(usage.get('prompt_tokens') or 0)}"
+        f"（缓存命中 {int(usage.get('prompt_cache_hit_tokens') or 0)}"
+        f" / 未命中 {int(usage.get('prompt_cache_miss_tokens') or 0)}），"
+        f"输出 {int(usage.get('completion_tokens') or 0)}。"
+        f"估算 ${float(usage.get('cost_usd') or 0):.4f}，{band_zh}{split}。"
+        f"{usage.get('price_note') or price_note(band)}"
+    )
+
+
 def usage_summary(path: str | None, prices: dict | None = None) -> dict:
     prices = prices or load_llm_config()
     rows = []
@@ -282,30 +373,53 @@ def usage_summary(path: str | None, prices: dict | None = None) -> dict:
                 line = line.strip()
                 if line:
                     rows.append(json.loads(line))
-    pt = sum(int(r.get("prompt_tokens") or 0) for r in rows)
-    ct = sum(int(r.get("completion_tokens") or 0) for r in rows)
-    pin = float(prices.get("price_input_per_mtok") or 0)
-    pout = float(prices.get("price_output_per_mtok") or 0)
+    pt = ct = hit = miss = 0
+    cost = peak_cost = off_cost = 0.0
+    peak_calls = off_calls = 0
     by = {}
     by_model = {}
     for r in rows:
+        p, c, h, m = _row_tokens(r)
+        usd, peak = _row_cost(r)
+        pt += p
+        ct += c
+        hit += h
+        miss += m
+        cost += usd
+        if peak:
+            peak_cost += usd
+            peak_calls += 1
+        else:
+            off_cost += usd
+            off_calls += 1
         b = by.setdefault(r.get("step") or "?", {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0})
         b["calls"] += 1
-        b["prompt_tokens"] += int(r.get("prompt_tokens") or 0)
-        b["completion_tokens"] += int(r.get("completion_tokens") or 0)
+        b["prompt_tokens"] += p
+        b["completion_tokens"] += c
         mk = f"{r.get('api') or 'deepseek'} {r.get('model') or prices.get('model') or ''}".strip()
-        m = by_model.setdefault(mk, {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0})
-        m["calls"] += 1
-        m["prompt_tokens"] += int(r.get("prompt_tokens") or 0)
-        m["completion_tokens"] += int(r.get("completion_tokens") or 0)
+        bucket = by_model.setdefault(mk, {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0})
+        bucket["calls"] += 1
+        bucket["prompt_tokens"] += p
+        bucket["completion_tokens"] += c
+    if peak_calls and off_calls:
+        band = "mixed"
+    elif peak_calls:
+        band = "peak"
+    else:
+        band = "off-peak"
     return {
         "calls": len(rows),
         "prompt_tokens": pt,
         "completion_tokens": ct,
-        "cost_cny": round(pt / 1e6 * pin + ct / 1e6 * pout, 4),
-        "price_input_per_mtok_cny": pin,
-        "price_output_per_mtok_cny": pout,
-        "price_note": "DeepSeek 闲时估算，输入 ¥1 / 输出 ¥4 每百万 token",
+        "prompt_cache_hit_tokens": hit,
+        "prompt_cache_miss_tokens": miss,
+        "cost_usd": round(cost, 6),
+        "peak_cost_usd": round(peak_cost, 6),
+        "offpeak_cost_usd": round(off_cost, 6),
+        "peak_calls": peak_calls,
+        "offpeak_calls": off_calls,
+        "band": band,
+        "price_note": price_note(band),
         "model": prices.get("model"),
         "by_step": by,
         "by_model": by_model,

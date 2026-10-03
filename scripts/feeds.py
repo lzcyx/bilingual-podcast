@@ -204,6 +204,21 @@ def _index_slugs(index) -> set:
     return used
 
 
+def _published_slug(index, seen, show_id: str, guid: str) -> str:
+    """Reuse the published URL when manually rebuilding an existing GUID."""
+    for ep in index or []:
+        if ep.get("show_id") != show_id or ep.get("guid") != guid:
+            continue
+        if ep.get("slug"):
+            return str(ep["slug"])
+        url = ep.get("html_url") or ""
+        m = re.search(r"episodes/([^/]+)/([^/]+)\.html$", url)
+        if m and m.group(1) == show_id:
+            return urllib.parse.unquote(m.group(2))
+    rec = ((seen or {}).get("items") or {}).get(item_key(show_id, guid)) or {}
+    return str(rec.get("slug") or "")
+
+
 def build_plan(shows, seen, failed, index, items_by_show, *, show_id="", guid="",
                min_duration_sec=600, now=None) -> dict:
     """Decide bootstrap / queue / skip. `seen` and `failed` are not mutated in place."""
@@ -274,7 +289,13 @@ def build_plan(shows, seen, failed, index, items_by_show, *, show_id="", guid=""
         if not force and dur is not None and dur < min_duration_sec:
             skipped.append({**_brief(it), "reason": "short", "duration_sec": dur})
             return
-        slug = _unique_slug(it, used)
+        # A forced rebuild of an already-published GUID must keep its public URL.
+        # Only allocate a new unique slug when this GUID has never been published.
+        slug = _published_slug(index, seen, it["show_id"], it["guid"]) if force else ""
+        if slug:
+            used.add((it["show_id"], slug))
+        else:
+            slug = _unique_slug(it, used)
         queue.append({
             **it,
             "slug": slug,

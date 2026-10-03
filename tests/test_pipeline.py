@@ -19,7 +19,7 @@ from scripts.llm.schema import (  # noqa: E402
 )
 from scripts.publish import apply_retention, classify_results, merge_index  # noqa: E402
 from scripts.llm.client import _thinking_variants, consume_sse  # noqa: E402
-from scripts.remove_ads import ad_speaker_ids, find_ad_ranges, remap_lines  # noqa: E402
+from scripts.remove_ads import ad_speaker_ids, find_leading_ad_range, remap_lines  # noqa: E402
 
 RSS = """<?xml version="1.0"?>
 <rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
@@ -139,14 +139,27 @@ class AdRemovalTests(unittest.TestCase):
             {"i": 4, "id": "e", "s": 20.0, "e": 22.0, "en": "second ad", "spk": "S1"},
             {"i": 5, "id": "f", "s": 22.0, "e": 25.0, "en": "ending", "spk": "S0"},
         ]
-        ranges, removed = find_ad_ranges(lines, {"S1"})
-        self.assertEqual([(r["s"], r["e"]) for r in ranges], [(5.0, 10.0), (20.0, 22.0)])
-        self.assertEqual([x["id"] for x in removed], ["b", "c", "e"])
+        # The first spoken line is not Ad, so later ads must all be kept.
+        ranges, removed = find_leading_ad_range(lines, {"S1"})
+        self.assertEqual(ranges, [])
+        self.assertEqual(removed, [])
+        self.assertEqual([x["id"] for x in remap_lines(lines, ranges)], ["a", "b", "c", "d", "e", "f"])
 
-        out = remap_lines(lines, ranges, {"S1"})
-        self.assertEqual([x["id"] for x in out], ["a", "d", "f"])
+        leading = [
+            {"i": 0, "id": "a0", "s": 2.0, "e": 5.0, "en": "pre-roll one", "spk": "S1"},
+            {"i": 1, "id": "a1", "s": 5.0, "e": 8.0, "en": "pre-roll two", "spk": "S1"},
+            {"i": 2, "id": "p0", "s": 8.0, "e": 15.0, "en": "program starts", "spk": "S0"},
+            {"i": 3, "id": "m0", "s": 20.0, "e": 22.0, "en": "mid-roll", "spk": "S1"},
+            {"i": 4, "id": "p1", "s": 22.0, "e": 25.0, "en": "program resumes", "spk": "S0"},
+        ]
+        ranges, removed = find_leading_ad_range(leading, {"S1"})
+        self.assertEqual([(r["s"], r["e"]) for r in ranges], [(2.0, 8.0)])
+        self.assertEqual([x["id"] for x in removed], ["a0", "a1"])
+
+        out = remap_lines(leading, ranges)
+        self.assertEqual([x["id"] for x in out], ["p0", "m0", "p1"])
         self.assertEqual([x["i"] for x in out], [0, 1, 2])
-        self.assertEqual([(x["s"], x["e"]) for x in out], [(0.0, 5.0), (5.0, 10.0), (15.0, 18.0)])
+        self.assertEqual([(x["s"], x["e"]) for x in out], [(2.0, 9.0), (14.0, 16.0), (16.0, 19.0)])
 
 
 class SchemaTests(unittest.TestCase):

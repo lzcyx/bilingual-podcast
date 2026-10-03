@@ -18,7 +18,7 @@ from scripts.llm.schema import (  # noqa: E402
     chapter_bounds, fallback_chapters, validate_chapters, validate_edits, validate_fixes, validate_speakers,
 )
 from scripts.publish import apply_retention, classify_results, merge_index  # noqa: E402
-from scripts.llm.client import consume_sse  # noqa: E402
+from scripts.llm.client import _thinking_variants, consume_sse  # noqa: E402
 
 RSS = """<?xml version="1.0"?>
 <rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
@@ -166,7 +166,7 @@ class SchemaTests(unittest.TestCase):
 
 class TranslateSalvageTests(unittest.TestCase):
     def test_bad_parts_are_retried_not_locally_repaired(self):
-        from scripts.llm.translate import _render, _salvage, _source_subset, LLMError
+        from scripts.llm.translate import _render, _salvage, _source_subset, _take, LLMError
         src = {"0": "Hello there friends.", "1-2": "I am your host Tim. | the wonderful Kristen.", "3": "It's me!"}
         with self.assertRaises(LLMError):
             _render({"groups": [{"key": "1-2", "parts": ["我是主持人 Tim，请来了 Kristen。", ""]}]}, {"1-2": src["1-2"]})
@@ -179,6 +179,10 @@ class TranslateSalvageTests(unittest.TestCase):
         subset = _source_subset(body, {"0": "Hello", "1-2": "One | Two", "3": "Three"}, ["1-2"])
         self.assertIn("# speaker: Bob (S1)\n1-2\tOne | Two", subset)
         self.assertNotIn("# speaker: Alice", subset)
+
+        good, bad = _take({"groups": [{"key": "1-2", "parts": ["只有一段"]}]}, {"1-2": src["1-2"]}, ["1-2"])
+        self.assertEqual(good, {})
+        self.assertEqual(bad["1-2"], "1 parts, need 2")
 
 
 class DeepSeekPriceTests(unittest.TestCase):
@@ -313,6 +317,15 @@ class RetentionTests(unittest.TestCase):
         self.assertTrue(by["a"]["archived"])
         self.assertFalse(by["b"]["archived"])
         self.assertEqual(deleted, ["episodes/ignuk/a.html"])
+
+
+class ClientReasoningTests(unittest.TestCase):
+    def test_high_reasoning_prefers_high_then_falls_back(self):
+        variants = _thinking_variants("high")
+        self.assertEqual(variants[0]["thinking"]["type"], "enabled")
+        self.assertEqual(variants[0]["reasoning_effort"], "high")
+        self.assertTrue(any(v.get("reasoning_effort") == "high" for v in variants))
+        self.assertTrue(any((v.get("thinking") or {}).get("type") == "enabled" for v in variants))
 
 
 class SseTests(unittest.TestCase):

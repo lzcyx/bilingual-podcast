@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""OpenAI-compatible DeepSeek client. Thinking mode is off. Secrets stay out of logs."""
+"""OpenAI-compatible DeepSeek client. Thinking mode is configurable. Secrets stay out of logs."""
 from __future__ import annotations
 
 import json
@@ -82,8 +82,14 @@ def parse_json_content(text: str):
 
 
 def _thinking_variants(thinking: str) -> list[dict]:
-    """Payload fragments. Disabled is required; fall back if the server rejects a field."""
+    """Payload fragments. Prefer the requested effort, then degrade only if the API rejects its fields."""
     mode = (thinking or "disabled").strip().lower()
+    if mode in ("high", "xhigh"):
+        return [
+            {"thinking": {"type": "enabled"}, "reasoning_effort": "high"},
+            {"reasoning_effort": "high"},
+            {"thinking": {"type": "enabled"}},
+        ]
     if mode in ("enabled", "on", "true"):
         return [{"thinking": {"type": "enabled"}}]
     return [
@@ -139,9 +145,10 @@ class Client:
             raise InfraError("Missing environment variable DEEPSEEK_API_KEY")
 
     def chat(self, messages, *, step: str, temperature: float | None = None, json_mode: bool = False,
-             max_tokens: int = 4096, extra: dict | None = None) -> str:
+             max_tokens: int = 4096, extra: dict | None = None, thinking: str | None = None) -> str:
         temp = self.cfg["temperature"] if temperature is None else temperature
-        variants = _thinking_variants(str(self.cfg.get("thinking") or "disabled"))
+        requested_thinking = str(self.cfg.get("thinking") or "disabled") if thinking is None else thinking
+        variants = _thinking_variants(requested_thinking)
         last_err = None
         for variant in variants:
             try:
@@ -249,7 +256,7 @@ class Client:
                 os.makedirs(os.path.dirname(self.usage_path) or ".", exist_ok=True)
                 with open(self.usage_path, "a", encoding="utf-8") as f:
                     f.write(line + "\n")
-            print(f"  tokens {step}: in {row['prompt_tokens']} out {row['completion_tokens']} ({host})", flush=True)
+            # Keep usage on disk for summaries/cost accounting, but do not spam per-call token counts in logs.
 
 
 def _content_from_payload(payload: dict) -> tuple[str, dict]:

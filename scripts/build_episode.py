@@ -131,6 +131,17 @@ def write_summary(report: dict):
     ]
     for s in report.get("steps") or []:
         lines.append(f"| {s['name']} | {s['seconds']} |")
+    ad = report.get("ad_removal") or {}
+    if ad.get("applied"):
+        lines.append("")
+        lines.append(
+            f"Ads removed: {ad.get('segments')} segment(s), "
+            f"{ad.get('removed_lines')} subtitle line(s), {float(ad.get('removed_seconds') or 0):.1f}s"
+        )
+    elif ad.get("eligible"):
+        lines.append("")
+        lines.append(f"Ads kept: {ad.get('reason') or 'no confident Ad speaker ranges'}")
+
     tr = report.get("translation") or {}
     if tr:
         lines.append("")
@@ -175,6 +186,7 @@ def main():
             "total_seconds": round(time.time() - t0, 1),
             "usage": usage,
             "translation": extra.get("translation"),
+            "ad_removal": extra.get("ad_removal"),
             "test": extra.get("test"),
             "error": redact(error) if error else None,
         }
@@ -266,6 +278,20 @@ def main():
         step("segment", lambda: run([PY, os.path.join(SCRIPTS, "segment.py"), "--workdir", wd]))
         step("proofread", lambda: run([PY, os.path.join(SCRIPTS, "llm", "proofread.py"), "--workdir", wd]))
         step("apply_edits", lambda: run([PY, os.path.join(SCRIPTS, "apply_edits.py"), "--workdir", wd]))
+        step("remove_ads", lambda: run([PY, os.path.join(SCRIPTS, "remove_ads.py"), "--workdir", wd]))
+        ad_report = {}
+        ad_report_path = os.path.join(wd, "ad_removal_report.json")
+        if os.path.exists(ad_report_path):
+            ad_report = json.load(open(ad_report_path, encoding="utf-8"))
+            ad_diag = os.path.join(out, "diagnostics", "ads")
+            os.makedirs(ad_diag, exist_ok=True)
+            for name in ("ad_removal_report.json", "ad_ranges.json", "ad_removed_lines.json"):
+                src = os.path.join(wd, name)
+                if os.path.exists(src):
+                    shutil.copy2(src, os.path.join(ad_diag, name))
+        clean_audio = os.path.join(wd, "episode_clean.mp3")
+        if ad_report.get("applied") and os.path.exists(clean_audio):
+            draft["audio_file"] = os.path.abspath(clean_audio)
         step("tr_split", lambda: run([PY, os.path.join(SCRIPTS, "tr_split.py"), "--workdir", wd, "--block", "40"]))
         step("translate", lambda: run([PY, os.path.join(SCRIPTS, "llm", "translate.py"), "--workdir", wd]))
 
@@ -321,13 +347,14 @@ def main():
         tr_path = os.path.join(wd, "translate_report.json")
         if os.path.exists(tr_path):
             translation = json.load(open(tr_path, encoding="utf-8"))
-        duration = probe_duration(os.path.join(wd, "episode.mp3")) or spec.get("duration_sec") or 0
+        final_audio = draft.get("audio_file") or os.path.join(wd, "episode.mp3")
+        duration = probe_duration(final_audio) or spec.get("duration_sec") or 0
         dump(True, False, None,
              show=show, title=title, episode=draft.get("episode") or spec.get("episode") or "",
              audio_mode=mode, dynamic_ads=bool(meta.get("dynamic_ads")),
              duration_sec=duration, speakers=speaker_names(os.path.join(wd, "speakers.json")),
              size_bytes=os.path.getsize(html), cover_file=cover_file,
-             translation=translation, test=test_res)
+             translation=translation, ad_removal=ad_report, test=test_res)
         print(f"OK {html} mode={mode} dynamic_ads={bool(meta.get('dynamic_ads'))} "
               f"{os.path.getsize(html) / 1e6:.2f} MB", flush=True)
     except StepError as e:

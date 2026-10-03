@@ -19,6 +19,7 @@ from scripts.llm.schema import (  # noqa: E402
 )
 from scripts.publish import apply_retention, classify_results, merge_index  # noqa: E402
 from scripts.llm.client import _thinking_variants, consume_sse  # noqa: E402
+from scripts.remove_ads import ad_speaker_ids, find_ad_ranges, remap_lines  # noqa: E402
 
 RSS = """<?xml version="1.0"?>
 <rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
@@ -120,6 +121,32 @@ class FeedTests(unittest.TestCase):
         with self.assertRaises(Exception):
             build_plan(SHOWS, {"bootstrapped": True, "items": {}}, {"items": {}}, [], items(),
                        show_id="ignuk", guid="does-not-exist")
+
+
+class AdRemovalTests(unittest.TestCase):
+    def test_exact_ad_speaker_ranges_and_time_remap(self):
+        speakers = {
+            "S0": {"name": "Host"},
+            "S1": {"name": "Ad"},
+            "S2": {"name": "Advertisement"},
+        }
+        self.assertEqual(ad_speaker_ids(speakers), {"S1"})
+        lines = [
+            {"i": 0, "id": "a", "s": 0.0, "e": 5.0, "en": "intro", "spk": "S0"},
+            {"i": 1, "id": "b", "s": 5.0, "e": 7.0, "en": "ad one", "spk": "S1"},
+            {"i": 2, "id": "c", "s": 7.0, "e": 10.0, "en": "ad two", "spk": "S1"},
+            {"i": 3, "id": "d", "s": 10.0, "e": 15.0, "en": "topic", "spk": "S0"},
+            {"i": 4, "id": "e", "s": 20.0, "e": 22.0, "en": "second ad", "spk": "S1"},
+            {"i": 5, "id": "f", "s": 22.0, "e": 25.0, "en": "ending", "spk": "S0"},
+        ]
+        ranges, removed = find_ad_ranges(lines, {"S1"})
+        self.assertEqual([(r["s"], r["e"]) for r in ranges], [(5.0, 10.0), (20.0, 22.0)])
+        self.assertEqual([x["id"] for x in removed], ["b", "c", "e"])
+
+        out = remap_lines(lines, ranges, {"S1"})
+        self.assertEqual([x["id"] for x in out], ["a", "d", "f"])
+        self.assertEqual([x["i"] for x in out], [0, 1, 2])
+        self.assertEqual([(x["s"], x["e"]) for x in out], [(0.0, 5.0), (5.0, 10.0), (15.0, 18.0)])
 
 
 class SchemaTests(unittest.TestCase):

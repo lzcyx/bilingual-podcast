@@ -127,12 +127,11 @@ jobs:
   benchmark:
     needs: [prepare, warm-model]
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
         source: [opp, ignuk, nvc, custom]
-        config: [2x2-static, 4x1-dynamic]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -147,41 +146,57 @@ jobs:
           name: asr-benchmark-input
           path: benchmark-input
       - name: Install benchmark dependencies
+        if: ${{ matrix.source != 'custom' || inputs.audio_url != '' }}
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg time
           pip install faster-whisper numpy
-      - name: Run ${{ matrix.source }} / ${{ matrix.config }}
+          python -m py_compile scripts/asr_benchmark.py
+      - name: Run all configs on the same runner
         if: ${{ matrix.source != 'custom' || inputs.audio_url != '' }}
         shell: bash
         run: |
-          case "${{ matrix.config }}" in
-            2x2-static)  JOBS=2; THREADS=2; SCHEDULE=static ;;
-            4x1-dynamic) JOBS=4; THREADS=1; SCHEDULE=dynamic ;;
-            *) exit 2 ;;
-          esac
-          OUT="benchmark/${{ matrix.source }}/${{ matrix.config }}"
-          mkdir -p "$OUT"
-          /usr/bin/time -v -o "$OUT/time.txt" \
-            python scripts/asr_benchmark.py "benchmark-input/${{ matrix.source }}.mp3" \
-              --workdir "$OUT/work" \
-              --result "$OUT/result.json" \
-              --label "${{ matrix.config }}" \
-              --source "${{ matrix.source }}" \
-              --jobs "$JOBS" --threads "$THREADS" --schedule "$SCHEDULE"
-      - name: Show result
-        if: ${{ always() && (matrix.source != 'custom' || inputs.audio_url != '') }}
-        run: |
-          OUT="benchmark/${{ matrix.source }}/${{ matrix.config }}"
-          test ! -f "$OUT/result.json" || cat "$OUT/result.json"
-          test ! -f "$OUT/time.txt" || cat "$OUT/time.txt"
+          set +e
+          failures=0
+          run_one() {
+            config="$1"
+            jobs="$2"
+            threads="$3"
+            schedule="$4"
+            out="benchmark/${{ matrix.source }}/$config"
+            mkdir -p "$out"
+            echo "::group::${{ matrix.source }} / $config"
+            /usr/bin/time -v -o "$out/time.txt" \
+              python scripts/asr_benchmark.py "benchmark-input/${{ matrix.source }}.mp3" \
+                --workdir "$out/work" \
+                --result "$out/result.json" \
+                --label "$config" \
+                --source "${{ matrix.source }}" \
+                --jobs "$jobs" --threads "$threads" --schedule "$schedule"
+            rc=$?
+            test ! -f "$out/result.json" || cat "$out/result.json"
+            test ! -f "$out/time.txt" || cat "$out/time.txt"
+            echo "::endgroup::"
+            if [ "$rc" -ne 0 ]; then
+              echo "::error::${{ matrix.source }} / $config failed with exit code $rc"
+              failures=$((failures + 1))
+            fi
+          }
+
+          # Paired benchmark: all configs below execute sequentially on this exact VM.
+          run_one 2x2-static 2 2 static
+          run_one 4x1-dynamic 4 1 dynamic
+          run_one 5x1-dynamic 5 1 dynamic
+
+          if [ "$failures" -ne 0 ]; then
+            echo "$failures benchmark configuration(s) failed"
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         if: ${{ always() && (matrix.source != 'custom' || inputs.audio_url != '') }}
         with:
-          name: asr-bench-${{ matrix.source }}-${{ matrix.config }}
-          path: |
-            benchmark/${{ matrix.source }}/${{ matrix.config }}/result.json
-            benchmark/${{ matrix.source }}/${{ matrix.config }}/time.txt
+          name: asr-bench-${{ matrix.source }}
+          path: benchmark/${{ matrix.source }}/
           retention-days: 7
           if-no-files-found: warn
 
@@ -199,7 +214,7 @@ jobs:
           python - <<'PY'
           import glob, json, os, re, statistics
 
-          configs = ["2x2-static", "4x1-dynamic"]
+          configs = ["2x2-static", "4x1-dynamic", "5x1-dynamic"]
           source_order = ["opp", "ignuk", "nvc", "custom"]
 
           def time_stats(path):
@@ -241,9 +256,13 @@ jobs:
           lines += ["", "## Cross-source comparison", ""]
           header = "| config | " + " | ".join(f"{s} RTF" for s in sources) + " | mean RTF | vs 2x2 static |"
           lines += [header, "|" + "---|" * (len(sources) + 3)]
+          complete_sources = [
+              s for s in sources
+              if all((s, cfg) in lookup for cfg in configs)
+          ]
           means = {}
           for cfg in configs:
-              vals = [lookup[(s, cfg)]["realtime_factor"] for s in sources if (s, cfg) in lookup]
+              vals = [lookup[(s, cfg)]["realtime_factor"] for s in complete_sources]
               means[cfg] = statistics.mean(vals) if vals else None
           baseline = means.get("2x2-static")
           for cfg in configs:
@@ -267,8 +286,9 @@ jobs:
               "- Presets automatically use the latest playable RSS episode from PlayStation, IGN UK, and Nintendo Voice Chat.",
               "- Each source clip is created once and reused by all configurations.",
               "- Default clip length is 15 minutes; custom audio_url adds a fourth source.",
-              "- 2x2-static is the production baseline; 4x1-dynamic is the hosted-runner candidate.",
-              "- 5 float32 workers are omitted: on a 4-core, 16 GB runner the second chunk wave runs out of memory.",
+              "- For each source, 2x2-static, 4x1-dynamic and 5x1-dynamic run sequentially on the same hosted runner.",
+              "- Aggregate mean RTF uses only sources that completed all three configs, so comparisons stay paired.",
+              "- 2x2-static is the production baseline; 4x1-dynamic and 5x1-dynamic are candidate configurations.",
               "- Audio download, clipping, WAV conversion and chunk creation are outside the transcription timer.",
           ]
           text = "\n".join(lines) + "\n"

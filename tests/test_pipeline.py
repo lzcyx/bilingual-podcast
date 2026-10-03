@@ -164,6 +164,24 @@ class SchemaTests(unittest.TestCase):
         self.assertNotIn("{lo}", text)
 
 
+class TranslateSalvageTests(unittest.TestCase):
+    def test_empty_part_keeps_the_rest_of_the_block(self):
+        from scripts.llm.translate import _render, _salvage, LLMError
+        src = {"0": "Hello there friends.", "1-2": "I am Tim. | the wonderful Kristen.", "3": "It's me!"}
+        obj = {"groups": [
+            {"key": "0", "parts": ["大家好。"]},
+            {"key": "1-2", "parts": ["我是 Tim。", ""]},
+            {"key": "3", "parts": ["是我！"]},
+        ]}
+        with self.assertRaises(LLMError):
+            _render(obj, src)
+        text = _salvage(obj, src)
+        self.assertIn("0\t大家好。", text)
+        self.assertIn("1-2\t我是 Tim。｜［未译］", text)
+        self.assertIn("3\t是我！", text)
+        self.assertEqual(text.count("［未译］"), 1)
+
+
 class PublishTests(unittest.TestCase):
     def test_attempts_infra_and_index_order(self):
         ep = {"show_id": "ignuk", "guid": "g", "title": "T", "pub_date": "2026-09-25T00:00:00+00:00",

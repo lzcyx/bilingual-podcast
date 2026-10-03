@@ -38,23 +38,48 @@ Rules:
 def _marker(src_map: dict) -> str:
     lines = []
     for key in src_map:
-        a, b = (key.split("-") + [key])[:2]
-        n = int(b) - int(a) + 1
-        lines.append(key + "\t" + "｜".join(["［未译］"] * n))
+        lines.append(key + "\t" + "｜".join(["［未译］"] * _need(key)))
     return "\n".join(lines) + "\n"
+
+
+def _need(key: str) -> int:
+    a, b = (key.split("-") + [key])[:2]
+    return int(b) - int(a) + 1
+
+
+def _groups(obj) -> dict:
+    got = {}
+    if not isinstance(obj, dict):
+        return got
+    for g in obj.get("groups") or []:
+        if not isinstance(g, dict):
+            continue
+        key = str(g.get("key") or "").strip()
+        if key:
+            got[key] = g.get("parts")
+    return got
+
+
+def _salvage(obj, src_map: dict) -> str:
+    """Keep every good line. A bad line becomes ［未译］, not the whole block."""
+    got = _groups(obj)
+    out = []
+    for key in src_map:
+        need = _need(key)
+        raw = got.get(key)
+        parts = [str(p).strip().replace("|", "／") for p in raw] if isinstance(raw, list) else []
+        if len(parts) != need:
+            parts = ["［未译］"] * need
+        else:
+            parts = [p if p else "［未译］" for p in parts]
+        out.append(key + "\t" + "｜".join(parts))
+    return "\n".join(out) + "\n"
 
 
 def _render(obj, src_map: dict) -> str:
     if not isinstance(obj, dict) or not isinstance(obj.get("groups"), list):
         raise LLMError("response needs {\"groups\": [{\"key\", \"parts\"}]}")
-    got = {}
-    for g in obj["groups"]:
-        if not isinstance(g, dict):
-            continue
-        key = str(g.get("key") or "").strip()
-        parts = g.get("parts")
-        if key:
-            got[key] = parts
+    got = _groups(obj)
     errs = []
     missing = [k for k in src_map if k not in got]
     extra = [k for k in got if k not in src_map]
@@ -64,8 +89,7 @@ def _render(obj, src_map: dict) -> str:
         errs.append("unexpected keys " + ", ".join(extra[:12]))
     out = []
     for key in src_map:
-        lo, hi = (key.split("-") + [key])[:2]
-        need = int(hi) - int(lo) + 1
+        need = _need(key)
         parts = got.get(key)
         if not isinstance(parts, list):
             continue
@@ -96,6 +120,7 @@ def _translate_block(client, wd, sp, lang, glossary):
     body = open(sp, encoding="utf-8").read()
     dest = sp.replace(".src.txt", f".{lang}.txt")
     errors = ""
+    last_obj = None
     for attempt in range(1, 4):
         user = f"Glossary:\n{glossary or '(none)'}\n\nSource block:\n{body}"
         if errors:
@@ -105,7 +130,9 @@ def _translate_block(client, wd, sp, lang, glossary):
                 [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}],
                 step="translate", temperature=0.2, json_mode=True, max_tokens=8192,
                 extra={"block": stem, "attempt": attempt})
-            rendered = _render(parse_json_content(text), src_map)
+            obj = parse_json_content(text)
+            last_obj = obj
+            rendered = _render(obj, src_map)
             with open(dest, "w", encoding="utf-8") as f:
                 f.write(rendered)
             rc, log = _check(wd, stem)
@@ -118,9 +145,11 @@ def _translate_block(client, wd, sp, lang, glossary):
         except (LLMError, Exception) as e:
             errors = str(e)
             print(f"  {stem} attempt {attempt}: {e}", flush=True)
-    print(f"  {stem}: still failing after 3 tries; marking lines ［未译］", flush=True)
+    rendered = _salvage(last_obj, src_map) if last_obj is not None else _marker(src_map)
+    blank = rendered.count("［未译］")
+    print(f"  {stem}: keeping partial translation, {blank} line(s) left ［未译］", flush=True)
     with open(dest, "w", encoding="utf-8") as f:
-        f.write(_marker(src_map))
+        f.write(rendered)
     rc, log = _check(wd, stem)
     print(log, flush=True)
     if rc != 0:

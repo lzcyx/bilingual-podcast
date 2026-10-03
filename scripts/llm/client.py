@@ -380,17 +380,17 @@ def usage_summary(path: str | None, prices: dict | None = None) -> dict:
     by_model = {}
     for r in rows:
         p, c, h, m = _row_tokens(r)
-        usd, peak = _row_cost(r)
+        cny, peak = _row_cost(r)
         pt += p
         ct += c
         hit += h
         miss += m
-        cost += usd
+        cost += cny
         if peak:
-            peak_cost += usd
+            peak_cost += cny
             peak_calls += 1
         else:
-            off_cost += usd
+            off_cost += cny
             off_calls += 1
         b = by.setdefault(r.get("step") or "?", {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0})
         b["calls"] += 1

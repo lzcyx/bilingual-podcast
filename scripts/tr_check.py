@@ -107,7 +107,8 @@ def main():
                 errs.append(f'{name}: line {r[0]}-{r[-1]} consecutive translations have no CJK')
             translated_lines = sum(rng(k)[1] - rng(k)[0] + 1 for k in src)
             if translated_lines and len(no_cjk_lines) / translated_lines > 0.15:
-                errs.append(f'{name}: line {no_cjk_lines[0]} block has too many no-CJK translations ({len(no_cjk_lines)}/{translated_lines})')
+                for i in no_cjk_lines:
+                    errs.append(f'{name}: line {i} contributes to too many no-CJK translations ({len(no_cjk_lines)}/{translated_lines})')
     if not only:
         missing = [i for i in range(len(lines)) if i not in tr]
         if missing and not errs: errs.append(f'lines without translation: {missing[:30]}')

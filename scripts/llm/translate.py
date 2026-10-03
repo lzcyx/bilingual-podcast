@@ -6,6 +6,7 @@ import argparse
 import glob
 import json
 import os
+import re
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -161,7 +162,10 @@ def _format(src_map: dict, parts_by_key: dict) -> str:
 
 
 def _bad_keys_from_check(log: str, src_map: dict) -> list[str]:
-    bad_lines = {int(x) for x in re.findall(r"ERROR: .*?line (\d+)", log)}
+    bad_lines = set()
+    for a, b in re.findall(r"ERROR: .*?line (\d+)(?:-(\d+))?", log):
+        lo, hi = int(a), int(b or a)
+        bad_lines.update(range(lo, hi + 1))
     bad = []
     for key in src_map:
         lo, hi = tr_check.rng(key)
@@ -176,7 +180,6 @@ def _translate_block(client, wd, sp, lang, glossary):
     body = open(sp, encoding="utf-8").read()
     dest = sp.replace(".src.txt", f".{lang}.txt")
     errors = ""
-    last_obj = None
     accepted: dict = {}
     for attempt in range(1, 4):
         pending = [k for k in src_map if k not in accepted]
@@ -192,7 +195,6 @@ def _translate_block(client, wd, sp, lang, glossary):
                 step="translate", temperature=0.2, json_mode=True, max_tokens=8192,
                 extra={"block": stem, "attempt": attempt})
             obj = parse_json_content(text)
-            last_obj = obj
             good, bad = _take(obj, src_map, pending)
             accepted.update(good)
             if bad:

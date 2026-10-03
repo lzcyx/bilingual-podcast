@@ -253,6 +253,11 @@ def main():
             run([PY, os.path.join(SCRIPTS, "llm", "prepare.py"),
                  "--workdir", wd, "--show", show, "--title", title])
         step("prepare", prepare)
+
+        def terminology_pre():
+            run([PY, os.path.join(SCRIPTS, "llm", "terminology.py"),
+                 "--workdir", wd, "--show", show, "--title", title, "--phase", "pre"])
+        step("terminology_pre", terminology_pre)
         cast = {}
         cast_path = os.path.join(wd, "cast.json")
         if os.path.exists(cast_path):
@@ -277,6 +282,10 @@ def main():
 
         step("segment", lambda: run([PY, os.path.join(SCRIPTS, "segment.py"), "--workdir", wd]))
         step("proofread", lambda: run([PY, os.path.join(SCRIPTS, "llm", "proofread.py"), "--workdir", wd]))
+        def terminology_post():
+            run([PY, os.path.join(SCRIPTS, "llm", "terminology.py"),
+                 "--workdir", wd, "--show", show, "--title", title, "--phase", "post"])
+        step("terminology_post", terminology_post)
         step("apply_edits", lambda: run([PY, os.path.join(SCRIPTS, "apply_edits.py"), "--workdir", wd]))
         step("remove_ads", lambda: run([PY, os.path.join(SCRIPTS, "remove_ads.py"), "--workdir", wd]))
         ad_report = {}

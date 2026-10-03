@@ -217,13 +217,13 @@ class DeepSeekPriceTests(unittest.TestCase):
             self.assertEqual(summary["band"], "off-peak")
             self.assertEqual(summary["prompt_tokens"], 1_000_000)
             self.assertEqual(summary["completion_tokens"], 1_000_000)
-            self.assertAlmostEqual(summary["cost_usd"], 0.75, places=4)
+            self.assertAlmostEqual(summary["cost_cny"], 5, places=4)
             with open(path, "w", encoding="utf-8") as f:
                 f.write(json.dumps(peak) + "\n")
                 f.write(json.dumps(hit) + "\n")
             mixed = usage_summary(path, {"model": "deepseek-flash"})
             self.assertEqual(mixed["band"], "peak")
-            self.assertAlmostEqual(mixed["cost_usd"], 1.50 + 0.006 + 1.20, places=4)
+            self.assertAlmostEqual(mixed["cost_cny"], 10 + 0.04 + 8, places=4)
 
 
 class PublishTests(unittest.TestCase):

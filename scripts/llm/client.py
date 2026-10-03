@@ -286,11 +286,11 @@ def _cache_miss(usage: dict) -> int:
     return int(usage.get("prompt_cache_miss_tokens") or 0)
 
 
-# deepseek-flash peak USD per 1M tokens. Off-peak is half.
-# Peak: weekdays 01:00–04:00 and 06:00–10:00 UTC (Beijing 09:00–12:00 and 14:00–18:00).
-_PEAK_HIT = 0.006
-_PEAK_MISS = 0.30
-_PEAK_OUT = 1.20
+# deepseek-flash 高峰价，人民币 / 百万 token。闲时是一半。
+# 高峰：北京时间工作日 9:00–12:00、14:00–18:00（不含法定节假日）。
+_PEAK_HIT = 0.04
+_PEAK_MISS = 2.0
+_PEAK_OUT = 8.0
 
 
 def is_peak(ts: datetime) -> bool:
@@ -330,18 +330,18 @@ def _row_cost(row: dict) -> tuple[float, bool]:
     _prompt, out, hit, miss = _row_tokens(row)
     peak = is_peak(_parse_ts(row.get("ts")))
     factor = 1.0 if peak else 0.5
-    usd = (hit / 1e6 * _PEAK_HIT + miss / 1e6 * _PEAK_MISS + out / 1e6 * _PEAK_OUT) * factor
-    return usd, peak
+    cny = (hit / 1e6 * _PEAK_HIT + miss / 1e6 * _PEAK_MISS + out / 1e6 * _PEAK_OUT) * factor
+    return cny, peak
 
 
 def price_note(band: str) -> str:
     if band == "peak":
-        return ("deepseek-flash 高峰：输入未命中 $0.30 / 命中 $0.006 / 输出 $1.20 每百万 token"
+        return ("deepseek-flash 高峰：输入未命中 ¥2 / 命中 ¥0.04 / 输出 ¥8 每百万 token"
                 "（北京时间工作日 9:00–12:00、14:00–18:00）")
     if band == "mixed":
-        return ("deepseek-flash 按每条请求的时间计价。高峰是北京时间工作日 9:00–12:00、14:00–18:00，"
+        return ("deepseek-flash 按每条请求的北京时间计价。高峰是工作日 9:00–12:00、14:00–18:00，"
                 "其余是闲时、半价。未扣法定节假日。")
-    return ("deepseek-flash 闲时：输入未命中 $0.15 / 命中 $0.003 / 输出 $0.60 每百万 token"
+    return ("deepseek-flash 闲时：输入未命中 ¥1 / 命中 ¥0.02 / 输出 ¥4 每百万 token"
             "（高峰的半价。未扣法定节假日）")
 
 
@@ -352,14 +352,14 @@ def format_usage(usage: dict) -> str:
     band_zh = {"peak": "高峰", "off-peak": "闲时", "mixed": "高峰+闲时"}.get(band, band)
     split = ""
     if band == "mixed":
-        split = (f"（高峰 ${float(usage.get('peak_cost_usd') or 0):.4f}"
-                 f" + 闲时 ${float(usage.get('offpeak_cost_usd') or 0):.4f}）")
+        split = (f"（高峰 ¥{float(usage.get('peak_cost_cny') or 0):.4f}"
+                 f" + 闲时 ¥{float(usage.get('offpeak_cost_cny') or 0):.4f}）")
     return (
         f"输入 {int(usage.get('prompt_tokens') or 0)}"
         f"（缓存命中 {int(usage.get('prompt_cache_hit_tokens') or 0)}"
         f" / 未命中 {int(usage.get('prompt_cache_miss_tokens') or 0)}），"
         f"输出 {int(usage.get('completion_tokens') or 0)}。"
-        f"估算 ${float(usage.get('cost_usd') or 0):.4f}，{band_zh}{split}。"
+        f"估算 ¥{float(usage.get('cost_cny') or 0):.4f}，{band_zh}{split}。"
         f"{usage.get('price_note') or price_note(band)}"
     )
 
@@ -413,9 +413,9 @@ def usage_summary(path: str | None, prices: dict | None = None) -> dict:
         "completion_tokens": ct,
         "prompt_cache_hit_tokens": hit,
         "prompt_cache_miss_tokens": miss,
-        "cost_usd": round(cost, 6),
-        "peak_cost_usd": round(peak_cost, 6),
-        "offpeak_cost_usd": round(off_cost, 6),
+        "cost_cny": round(cost, 6),
+        "peak_cost_cny": round(peak_cost, 6),
+        "offpeak_cost_cny": round(off_cost, 6),
         "peak_calls": peak_calls,
         "offpeak_calls": off_calls,
         "band": band,

@@ -5,5 +5,4 @@ model: deepseek-flash
 temperature: 0.2
 # disabled sends thinking.type=disabled and reasoning_effort=none (no chain-of-thought).
 thinking: disabled
-# Cost in the Actions summary is estimated from DeepSeek's official peak/off-peak
-# USD table for deepseek-flash. See scripts/llm/client.py.
+# 费用按中国区人民币价估算：deepseek-flash 闲时输入未命中 ¥1、输出 ¥4 / 百万 token，高峰翻倍。

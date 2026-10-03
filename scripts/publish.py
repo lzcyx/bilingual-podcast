@@ -211,7 +211,7 @@ def _run_usage_line(results: dict) -> str:
     totals = {
         "calls": 0, "prompt_tokens": 0, "completion_tokens": 0,
         "prompt_cache_hit_tokens": 0, "prompt_cache_miss_tokens": 0,
-        "cost_usd": 0.0, "peak_cost_usd": 0.0, "offpeak_cost_usd": 0.0,
+        "cost_cny": 0.0, "peak_cost_cny": 0.0, "offpeak_cost_cny": 0.0,
         "peak_calls": 0, "offpeak_calls": 0,
     }
     for res in results.values():
@@ -222,7 +222,7 @@ def _run_usage_line(results: dict) -> str:
                     "prompt_cache_hit_tokens", "prompt_cache_miss_tokens",
                     "peak_calls", "offpeak_calls"):
             totals[key] += int(usage.get(key) or 0)
-        for key in ("cost_usd", "peak_cost_usd", "offpeak_cost_usd"):
+        for key in ("cost_cny", "peak_cost_cny", "offpeak_cost_cny"):
             totals[key] += float(usage.get(key) or 0)
     if not totals["calls"]:
         return ""
@@ -236,7 +236,7 @@ def _run_usage_line(results: dict) -> str:
     sys.path.insert(0, os.path.join(ROOT, "scripts"))
     from llm.client import format_usage, price_note
     totals["price_note"] = price_note(band)
-    for key in ("cost_usd", "peak_cost_usd", "offpeak_cost_usd"):
+    for key in ("cost_cny", "peak_cost_cny", "offpeak_cost_cny"):
         totals[key] = round(totals[key], 6)
     return "DeepSeek：" + format_usage(totals)
 

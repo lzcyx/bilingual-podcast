@@ -108,7 +108,7 @@ def _search_one(ddgs, term: str, query: str, show_sites: list[str]) -> list[dict
     queries = []
     for domain in show_sites[:1]:
         queries.append(f'"{query or term}" site:{domain}')
-    queries.append(f'"{query or term}" official Simplified Chinese')
+    queries.append(f'"{query or term}" 简体中文 官方')
     seen = set()
     out = []
     for q in queries:

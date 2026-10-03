@@ -1,4 +1,4 @@
-# Python >= 3.9. System packages needed separately: ffmpeg (ffmpeg + ffprobe on PATH).
+# Python >= 3.10. System packages needed separately: ffmpeg (ffmpeg + ffprobe on PATH).
 faster-whisper>=1.1.0     # CTranslate2 Whisper backend; pulls ctranslate2, av, tokenizers, onnxruntime, huggingface_hub
 numpy>=1.24               # chunk boundary search (transcribe.py) + diarization arrays
 Pillow>=10.0              # cover art -> theme colour, icon (build.py / theme.py)

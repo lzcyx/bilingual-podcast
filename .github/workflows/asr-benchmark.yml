@@ -1,0 +1,249 @@
+name: ASR benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      audio_url:
+        description: "Direct MP3/audio URL used to build one shared benchmark clip"
+        required: true
+        type: string
+      start_seconds:
+        description: "Clip start in seconds"
+        required: false
+        default: "0"
+        type: string
+      duration_seconds:
+        description: "Clip duration in seconds (1200 = 20 min)"
+        required: false
+        default: "1200"
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  HF_HUB_DISABLE_TELEMETRY: "1"
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+      - name: Download exact source once and make shared clip
+        env:
+          AUDIO_URL: ${{ inputs.audio_url }}
+          START_SECONDS: ${{ inputs.start_seconds }}
+          DURATION_SECONDS: ${{ inputs.duration_seconds }}
+        run: |
+          curl -L --fail --retry 3 --connect-timeout 30 \
+            -A "Mozilla/5.0" "$AUDIO_URL" -o source-audio
+          ffmpeg -y -loglevel error \
+            -ss "$START_SECONDS" -t "$DURATION_SECONDS" \
+            -i source-audio -vn -ac 1 -ar 44100 -c:a libmp3lame -q:a 2 bench.mp3
+          ffprobe -v error -show_entries format=duration,size -of json bench.mp3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: asr-benchmark-input
+          path: bench.mp3
+          retention-days: 3
+          if-no-files-found: error
+
+  warm-model:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: asr-large-v3-turbo-${{ runner.os }}-${{ runner.arch }}-v1
+      - name: Download/verify faster-whisper model
+        run: |
+          pip install faster-whisper
+          python - <<'PY'
+          from faster_whisper import WhisperModel
+          WhisperModel("large-v3-turbo", device="cpu", compute_type="float32", cpu_threads=1)
+          print("large-v3-turbo ready")
+          PY
+
+  benchmark:
+    needs: [prepare, warm-model]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: 1x4-static
+            jobs: 1
+            threads: 4
+            schedule: static
+          - label: 1x5-static
+            jobs: 1
+            threads: 5
+            schedule: static
+          - label: 2x2-static
+            jobs: 2
+            threads: 2
+            schedule: static
+          - label: 2x2-dynamic
+            jobs: 2
+            threads: 2
+            schedule: dynamic
+          - label: 2x3-dynamic
+            jobs: 2
+            threads: 3
+            schedule: dynamic
+          - label: 4x1-static
+            jobs: 4
+            threads: 1
+            schedule: static
+          - label: 4x1-dynamic
+            jobs: 4
+            threads: 1
+            schedule: dynamic
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: asr-large-v3-turbo-${{ runner.os }}-${{ runner.arch }}-v1
+      - uses: actions/download-artifact@v4
+        with:
+          name: asr-benchmark-input
+          path: benchmark-input
+      - name: Install benchmark dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg time
+          pip install faster-whisper numpy
+      - name: Run ${{ matrix.label }}
+        run: |
+          mkdir -p "benchmark/${{ matrix.label }}"
+          /usr/bin/time -v -o "benchmark/${{ matrix.label }}/time.txt" \
+            python scripts/asr_benchmark.py benchmark-input/bench.mp3 \
+              --workdir "benchmark/${{ matrix.label }}/work" \
+              --result "benchmark/${{ matrix.label }}/result.json" \
+              --label "${{ matrix.label }}" \
+              --jobs "${{ matrix.jobs }}" \
+              --threads "${{ matrix.threads }}" \
+              --schedule "${{ matrix.schedule }}"
+      - name: Show result
+        if: always()
+        run: |
+          test ! -f "benchmark/${{ matrix.label }}/result.json" || cat "benchmark/${{ matrix.label }}/result.json"
+          test ! -f "benchmark/${{ matrix.label }}/time.txt" || cat "benchmark/${{ matrix.label }}/time.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: asr-bench-${{ matrix.label }}
+          path: |
+            benchmark/${{ matrix.label }}/result.json
+            benchmark/${{ matrix.label }}/time.txt
+          retention-days: 7
+          if-no-files-found: warn
+
+  summary:
+    needs: benchmark
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: asr-bench-*
+          path: results
+      - name: Build comparison table
+        run: |
+          python - <<'PY'
+          import glob, json, os, re
+
+          order = [
+              "1x4-static", "1x5-static",
+              "2x2-static", "2x2-dynamic", "2x3-dynamic",
+              "4x1-static", "4x1-dynamic",
+          ]
+
+          def time_stats(path):
+              out = {"cpu": "", "rss_kb": ""}
+              if not os.path.exists(path):
+                  return out
+              text = open(path, encoding="utf-8", errors="replace").read()
+              m = re.search(r"Percent of CPU this job got:\s*(\S+)", text)
+              if m:
+                  out["cpu"] = m.group(1)
+              m = re.search(r"Maximum resident set size \(kbytes\):\s*(\d+)", text)
+              if m:
+                  out["rss_kb"] = int(m.group(1))
+              return out
+
+          rows = []
+          for p in glob.glob("results/**/result.json", recursive=True):
+              r = json.load(open(p, encoding="utf-8"))
+              t = time_stats(os.path.join(os.path.dirname(p), "time.txt"))
+              worker_work = ", ".join(f'{w["work_seconds"]:.1f}' for w in r.get("workers", []))
+              rows.append({**r, **t, "worker_work": worker_work})
+
+          rows.sort(key=lambda r: order.index(r["label"]) if r["label"] in order else 999)
+          fastest = min((r for r in rows if r.get("elapsed_seconds") is not None),
+                        key=lambda r: r["elapsed_seconds"], default=None)
+
+          lines = [
+              "# ASR benchmark",
+              "",
+              f"Completed configurations: **{len(rows)}/{len(order)}**",
+              "",
+              "| config | scheduling | compute threads | elapsed | RTF | CPU | max RSS | worker inference seconds |",
+              "|---|---|---:|---:|---:|---:|---:|---|",
+          ]
+          for r in rows:
+              label = r["label"]
+              if fastest and label == fastest["label"]:
+                  label = f"**{label}**"
+              rss = f'{r["rss_kb"] / 1024:.0f} MiB' if r.get("rss_kb") else ""
+              lines.append(
+                  f'| {label} | {r["schedule"]} | {r["total_compute_threads"]} | '
+                  f'{r["elapsed_seconds"]:.1f}s | {r["realtime_factor"]:.3f} | '
+                  f'{r.get("cpu", "")} | {rss} | {r["worker_work"]} |'
+              )
+
+          missing = [x for x in order if x not in {r["label"] for r in rows}]
+          if fastest:
+              lines += [
+                  "",
+                  f'Fastest measured configuration: **{fastest["label"]}** '
+                  f'({fastest["elapsed_seconds"]:.1f}s, RTF {fastest["realtime_factor"]:.3f}).',
+              ]
+          if missing:
+              lines += ["", "No completed result JSON for: " + ", ".join(missing) + "."]
+          lines += [
+              "",
+              "Notes:",
+              "- The shared input clip is created once, so every matrix job transcribes identical audio.",
+              "- Audio download, clipping, WAV conversion and chunk creation are outside the transcription timer.",
+              "- Timed work includes one model load per worker plus all Whisper decoding.",
+              "- static = production-style round-robin chunk assignment; dynamic = next free worker takes the next chunk.",
+          ]
+          text = "\n".join(lines) + "\n"
+          print(text)
+          open("benchmark-summary.md", "w", encoding="utf-8").write(text)
+          summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary:
+              with open(summary, "a", encoding="utf-8") as f:
+                  f.write(text)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: asr-benchmark-summary
+          path: benchmark-summary.md
+          retention-days: 7

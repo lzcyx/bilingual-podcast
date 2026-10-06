@@ -1,5 +1,29 @@
 [
   {
+    "show_id": "beyond",
+    "guid": "934b8428-bde6-11f1-bbf8-479a46a8393b",
+    "show": "Beyond",
+    "title": "Galactic Racer: The Star Wars Burnout That Cured Our Star Wars Burnout",
+    "episode": "",
+    "pub_date": "2026-10-06T17:56:00+00:00",
+    "duration_sec": 4662,
+    "audio_mode": "offline",
+    "dynamic_ads": true,
+    "html_url": "https://lzcyx.github.io/bilingual-podcast/episodes/beyond/2026-10-07-galactic-racer-the-star-wars-burnout-that-cured-our-star-wars-burnout.html",
+    "cover_url": "https://lzcyx.github.io/bilingual-podcast/covers/beyond/2026-10-07-galactic-racer-the-star-wars-burnout-that-cured-our-star-wars-burnout.jpg",
+    "size_bytes": 25207661,
+    "speakers": [
+      "Ad",
+      "Max Scoville",
+      "Brian Altano",
+      "Nick Maillet",
+      "Jada Griffin"
+    ],
+    "revision": "8031bd9eb97f",
+    "created_at": "2026-10-06T21:54:18.179343+00:00",
+    "archived": false
+  },
+  {
     "show_id": "nvc",
     "guid": "a2039920-bec6-11f1-b447-239627646b98",
     "show": "Nintendo Voice Chat",

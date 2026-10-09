@@ -1,5 +1,74 @@
 [
   {
+    "show_id": "gamescoop",
+    "guid": "799c67a8-c40e-11f1-a826-4bc19cae60b3",
+    "show": "Game Scoop!",
+    "title": "The Best Nintendo Switch Online Games (As of October '26)",
+    "episode": "874",
+    "pub_date": "2026-10-09T18:51:00+00:00",
+    "duration_sec": 3694,
+    "audio_mode": "offline",
+    "dynamic_ads": true,
+    "html_url": "https://lzcyx.github.io/bilingual-podcast/episodes/gamescoop/2026-10-10-game-scoop-874-the-best-nintendo-switch-online-games-as-of-october-26.html",
+    "cover_url": "https://lzcyx.github.io/bilingual-podcast/covers/gamescoop/2026-10-10-game-scoop-874-the-best-nintendo-switch-online-games-as-of-october-26.jpg",
+    "size_bytes": 20142210,
+    "speakers": [
+      "Ad",
+      "Daemon Hatfield",
+      "Justin Davis",
+      "Peer Schneider"
+    ],
+    "revision": "7830232fce47",
+    "created_at": "2026-10-09T21:14:26.219085+00:00",
+    "archived": false
+  },
+  {
+    "show_id": "opp",
+    "guid": "48b25392-1058-4ff4-a34b-7f8a12af8d65",
+    "show": "Official PlayStation Podcast",
+    "title": "Now this is Podcasting",
+    "episode": "550",
+    "pub_date": "2026-10-09T16:45:00+00:00",
+    "duration_sec": 3039,
+    "audio_mode": "online",
+    "dynamic_ads": false,
+    "html_url": "https://lzcyx.github.io/bilingual-podcast/episodes/opp/2026-10-10-episode-550-now-this-is-podcasting.html",
+    "cover_url": "https://lzcyx.github.io/bilingual-podcast/covers/opp/2026-10-10-episode-550-now-this-is-podcasting.jpg",
+    "size_bytes": 227701,
+    "speakers": [
+      "O'Dell",
+      "Kristen",
+      "Jim",
+      "Matt Webster",
+      "Gillen"
+    ],
+    "revision": "2c7fce6cf071",
+    "created_at": "2026-10-09T21:14:26.219085+00:00",
+    "archived": false
+  },
+  {
+    "show_id": "consolewatch",
+    "guid": "5a7e6852-c356-11f1-b99c-13331fea047e",
+    "show": "Next-Gen Console Watch",
+    "title": "Xbox's Next Gen Future Depends on Strengthening Current Gen - Next-Gen Console Watch",
+    "episode": "",
+    "pub_date": "2026-10-09T13:00:00+00:00",
+    "duration_sec": 1509,
+    "audio_mode": "offline",
+    "dynamic_ads": true,
+    "html_url": "https://lzcyx.github.io/bilingual-podcast/episodes/consolewatch/2026-10-09-xbox-s-next-gen-future-depends-on-strengthening-current-gen-next-gen-c.html",
+    "cover_url": "https://lzcyx.github.io/bilingual-podcast/covers/consolewatch/2026-10-09-xbox-s-next-gen-future-depends-on-strengthening-current-gen-next-gen-c.jpg",
+    "size_bytes": 8271605,
+    "speakers": [
+      "Ad",
+      "Daemon Hatfield",
+      "Max Scoville"
+    ],
+    "revision": "2d764a2c48f3",
+    "created_at": "2026-10-09T21:14:26.219085+00:00",
+    "archived": false
+  },
+  {
     "show_id": "beyond",
     "guid": "934b8428-bde6-11f1-bbf8-479a46a8393b",
     "show": "Beyond",

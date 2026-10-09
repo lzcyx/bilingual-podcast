@@ -6946,6 +6946,15 @@
       "reason": "bootstrap",
       "marked_at": "2026-10-02T13:12:09.398216+00:00"
     },
+    "consolewatch\t5a7e6852-c356-11f1-b99c-13331fea047e": {
+      "show_id": "consolewatch",
+      "guid": "5a7e6852-c356-11f1-b99c-13331fea047e",
+      "title": "Xbox's Next Gen Future Depends on Strengthening Current Gen - Next-Gen Console Watch",
+      "pub_date": "2026-10-09T13:00:00+00:00",
+      "reason": "published",
+      "marked_at": "2026-10-09T21:14:26.219085+00:00",
+      "slug": "2026-10-09-xbox-s-next-gen-future-depends-on-strengthening-current-gen-next-gen-c"
+    },
     "consolewatch\t5b6a0352-975f-11f1-adb1-73cc883d7dc6": {
       "show_id": "consolewatch",
       "guid": "5b6a0352-975f-11f1-adb1-73cc883d7dc6",
@@ -10099,6 +10108,15 @@
       "pub_date": "2018-09-20T20:12:36+00:00",
       "reason": "bootstrap",
       "marked_at": "2026-10-02T13:12:09.398216+00:00"
+    },
+    "gamescoop\t799c67a8-c40e-11f1-a826-4bc19cae60b3": {
+      "show_id": "gamescoop",
+      "guid": "799c67a8-c40e-11f1-a826-4bc19cae60b3",
+      "title": "Game Scoop! 874: The Best Nintendo Switch Online Games (As of October '26)",
+      "pub_date": "2026-10-09T18:51:00+00:00",
+      "reason": "published",
+      "marked_at": "2026-10-09T21:14:26.219085+00:00",
+      "slug": "2026-10-10-game-scoop-874-the-best-nintendo-switch-online-games-as-of-october-26"
     },
     "gamescoop\t79bcbd3987f5b8191c92774f3330b1dc": {
       "show_id": "gamescoop",
@@ -26645,6 +26663,15 @@
       "pub_date": "2025-03-14T16:45:00+00:00",
       "reason": "bootstrap",
       "marked_at": "2026-10-02T13:12:09.398216+00:00"
+    },
+    "opp\t48b25392-1058-4ff4-a34b-7f8a12af8d65": {
+      "show_id": "opp",
+      "guid": "48b25392-1058-4ff4-a34b-7f8a12af8d65",
+      "title": "Episode 550: Now this is Podcasting",
+      "pub_date": "2026-10-09T16:45:00+00:00",
+      "reason": "published",
+      "marked_at": "2026-10-09T21:14:26.219085+00:00",
+      "slug": "2026-10-10-episode-550-now-this-is-podcasting"
     },
     "opp\t4f22371a-8c13-44cf-bae9-f5c1f67e3fd3": {
       "show_id": "opp",

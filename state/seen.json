@@ -6938,6 +6938,15 @@
       "reason": "bootstrap",
       "marked_at": "2026-10-02T13:12:09.398216+00:00"
     },
+    "consolewatch\t57e88c90-c751-11f1-9d09-178f6ca392b8": {
+      "show_id": "consolewatch",
+      "guid": "57e88c90-c751-11f1-9d09-178f6ca392b8",
+      "title": "GTA 6 on PC: Why Rockstar Might Be Fast-Tracking It - Next-Gen Console Watch",
+      "pub_date": "2026-10-16T13:00:00+00:00",
+      "reason": "published",
+      "marked_at": "2026-10-16T20:18:17.548607+00:00",
+      "slug": "2026-10-16-gta-6-on-pc-why-rockstar-might-be-fast-tracking-it-next-gen-console-wa"
+    },
     "consolewatch\t59d80986-be6b-11ef-a88c-9f1efd70536d": {
       "show_id": "consolewatch",
       "guid": "59d80986-be6b-11ef-a88c-9f1efd70536d",
@@ -11373,6 +11382,15 @@
       "pub_date": "2021-01-29T21:09:32+00:00",
       "reason": "bootstrap",
       "marked_at": "2026-10-02T13:12:09.398216+00:00"
+    },
+    "gamescoop\tb77e386a-c97e-11f1-9866-f7ac4452135d": {
+      "show_id": "gamescoop",
+      "guid": "b77e386a-c97e-11f1-9866-f7ac4452135d",
+      "title": "Game Scoop! 875: The Castlevania Curse Is Lifted",
+      "pub_date": "2026-10-16T17:57:00+00:00",
+      "reason": "published",
+      "marked_at": "2026-10-16T20:18:17.548607+00:00",
+      "slug": "2026-10-17-game-scoop-875-the-castlevania-curse-is-lifted"
     },
     "gamescoop\tb7fdee528a59cfb20c234f7827627a5a": {
       "show_id": "gamescoop",
@@ -18894,6 +18912,15 @@
       "pub_date": "2024-08-02T08:00:00+00:00",
       "reason": "bootstrap",
       "marked_at": "2026-10-02T13:12:09.398216+00:00"
+    },
+    "ignuk\te80d67fa-c95e-11f1-9073-b3c561396604": {
+      "show_id": "ignuk",
+      "guid": "e80d67fa-c95e-11f1-9073-b3c561396604",
+      "title": "IGN UK Podcast 868: Turns Out Ocarina of Time is a Good Game",
+      "pub_date": "2026-10-16T12:50:00+00:00",
+      "reason": "published",
+      "marked_at": "2026-10-16T20:18:17.548607+00:00",
+      "slug": "2026-10-16-ign-uk-podcast-868-turns-out-ocarina-of-time-is-a-good-game"
     },
     "ignuk\te82b4e3579a5000239c8f239eae5f6e1": {
       "show_id": "ignuk",
@@ -26810,6 +26837,15 @@
       "pub_date": "2025-06-20T16:45:00+00:00",
       "reason": "bootstrap",
       "marked_at": "2026-10-02T13:12:09.398216+00:00"
+    },
+    "opp\t9ca5bc17-e997-48c3-999b-b8999b596c3b": {
+      "show_id": "opp",
+      "guid": "9ca5bc17-e997-48c3-999b-b8999b596c3b",
+      "title": "Episode 551: Quadruple Duty",
+      "pub_date": "2026-10-16T16:45:00+00:00",
+      "reason": "published",
+      "marked_at": "2026-10-16T20:18:17.548607+00:00",
+      "slug": "2026-10-17-episode-551-quadruple-duty"
     },
     "opp\ta113de78-b58d-4ee5-a92b-056aae7f4b85": {
       "show_id": "opp",

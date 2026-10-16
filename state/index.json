@@ -1,5 +1,98 @@
 [
   {
+    "show_id": "gamescoop",
+    "guid": "b77e386a-c97e-11f1-9866-f7ac4452135d",
+    "show": "Game Scoop!",
+    "title": "The Castlevania Curse Is Lifted",
+    "episode": "875",
+    "pub_date": "2026-10-16T17:57:00+00:00",
+    "duration_sec": 4195,
+    "audio_mode": "offline",
+    "dynamic_ads": true,
+    "html_url": "https://lzcyx.github.io/bilingual-podcast/episodes/gamescoop/2026-10-17-game-scoop-875-the-castlevania-curse-is-lifted.html",
+    "cover_url": "https://lzcyx.github.io/bilingual-podcast/covers/gamescoop/2026-10-17-game-scoop-875-the-castlevania-curse-is-lifted.jpg",
+    "size_bytes": 22943152,
+    "speakers": [
+      "Ad",
+      "Justin Davis",
+      "Daemon Hatfield",
+      "Sam Claiborn",
+      "Nick Limon"
+    ],
+    "revision": "af35c2ed8674",
+    "created_at": "2026-10-16T20:18:17.548607+00:00",
+    "archived": false
+  },
+  {
+    "show_id": "opp",
+    "guid": "9ca5bc17-e997-48c3-999b-b8999b596c3b",
+    "show": "Official PlayStation Podcast",
+    "title": "Quadruple Duty",
+    "episode": "551",
+    "pub_date": "2026-10-16T16:45:00+00:00",
+    "duration_sec": 2714,
+    "audio_mode": "online",
+    "dynamic_ads": false,
+    "html_url": "https://lzcyx.github.io/bilingual-podcast/episodes/opp/2026-10-17-episode-551-quadruple-duty.html",
+    "cover_url": "https://lzcyx.github.io/bilingual-podcast/covers/opp/2026-10-17-episode-551-quadruple-duty.jpg",
+    "size_bytes": 207573,
+    "speakers": [
+      "Sid Shuman",
+      "Kristen Zatany",
+      "O'Dell Harmon",
+      "Tim Turri",
+      "Jeff Negus"
+    ],
+    "revision": "0ce397d9bb4f",
+    "created_at": "2026-10-16T20:18:17.548607+00:00",
+    "archived": false
+  },
+  {
+    "show_id": "consolewatch",
+    "guid": "57e88c90-c751-11f1-9d09-178f6ca392b8",
+    "show": "Next-Gen Console Watch",
+    "title": "GTA 6 on PC: Why Rockstar Might Be Fast-Tracking It - Next-Gen Console Watch",
+    "episode": "",
+    "pub_date": "2026-10-16T13:00:00+00:00",
+    "duration_sec": 1408,
+    "audio_mode": "offline",
+    "dynamic_ads": true,
+    "html_url": "https://lzcyx.github.io/bilingual-podcast/episodes/consolewatch/2026-10-16-gta-6-on-pc-why-rockstar-might-be-fast-tracking-it-next-gen-console-wa.html",
+    "cover_url": "https://lzcyx.github.io/bilingual-podcast/covers/consolewatch/2026-10-16-gta-6-on-pc-why-rockstar-might-be-fast-tracking-it-next-gen-console-wa.jpg",
+    "size_bytes": 7819116,
+    "speakers": [
+      "Daemon Hatfield",
+      "Nick Limon",
+      "Ad"
+    ],
+    "revision": "002f82bc908d",
+    "created_at": "2026-10-16T20:18:17.548607+00:00",
+    "archived": false
+  },
+  {
+    "show_id": "ignuk",
+    "guid": "e80d67fa-c95e-11f1-9073-b3c561396604",
+    "show": "IGN UK Podcast",
+    "title": "Turns Out Ocarina of Time is a Good Game",
+    "episode": "868",
+    "pub_date": "2026-10-16T12:50:00+00:00",
+    "duration_sec": 3293,
+    "audio_mode": "offline",
+    "dynamic_ads": true,
+    "html_url": "https://lzcyx.github.io/bilingual-podcast/episodes/ignuk/2026-10-16-ign-uk-podcast-868-turns-out-ocarina-of-time-is-a-good-game.html",
+    "cover_url": "https://lzcyx.github.io/bilingual-podcast/covers/ignuk/2026-10-16-ign-uk-podcast-868-turns-out-ocarina-of-time-is-a-good-game.jpg",
+    "size_bytes": 17828060,
+    "speakers": [
+      "Simon Cardy",
+      "Matt Purslow",
+      "Mat Jones",
+      "Ad"
+    ],
+    "revision": "40279e4c315c",
+    "created_at": "2026-10-16T20:18:17.548607+00:00",
+    "archived": false
+  },
+  {
     "show_id": "nvc",
     "guid": "9ec282b2-c777-11f1-9512-7feb7969be50",
     "show": "Nintendo Voice Chat",

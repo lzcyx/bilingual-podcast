@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""OpenAI-compatible DeepSeek client. Thinking mode is configurable. Secrets stay out of logs."""
+"""OpenAI-compatible multi-provider client with fallback.
+
+Providers are tried in the order listed in llm.yaml. Base URLs and keys come from env.
+"""
 from __future__ import annotations
 
 import json
@@ -10,7 +13,6 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 
-# One call may run this long (streaming). 429 / 5xx / timeouts retry up to 5 times.
 REQUEST_TIMEOUT = 600
 MAX_ATTEMPTS = 5
 RETRY_WAITS = (2, 4, 8, 16)
@@ -31,26 +33,53 @@ def repo_root() -> str:
 def load_llm_config(root: str | None = None) -> dict:
     root = root or repo_root()
     cfg = {
-        "base_url": "https://api.deepseek.com",
-        "model": "deepseek-flash",
         "temperature": 0.2,
         "thinking": "disabled",
-        "price_input_per_mtok": 1.0,
-        "price_output_per_mtok": 4.0,
+        "providers": [],
     }
     path = os.path.join(root, "llm.yaml")
     if os.path.exists(path):
         import yaml
         with open(path, encoding="utf-8") as f:
             raw = yaml.safe_load(f) or {}
-        for k in list(cfg):
-            if k in raw and raw[k] is not None:
-                cfg[k] = raw[k]
-    if os.environ.get("DEEPSEEK_BASE_URL"):
-        cfg["base_url"] = os.environ["DEEPSEEK_BASE_URL"].strip()
-    if os.environ.get("DEEPSEEK_MODEL"):
-        cfg["model"] = os.environ["DEEPSEEK_MODEL"].strip()
+        if "temperature" in raw:
+            cfg["temperature"] = raw["temperature"]
+        if "thinking" in raw:
+            cfg["thinking"] = raw["thinking"]
+        providers = raw.get("providers") or []
+        # Backward compat: single base_url/model
+        if not providers and raw.get("base_url"):
+            providers = [{
+                "name": "deepseek",
+                "base_url": raw.get("base_url"),
+                "model": raw.get("model") or "deepseek-flash",
+                "key_env": "DEEPSEEK_API_KEY",
+            }]
+        cfg["providers"] = providers
     return cfg
+
+
+def _resolve_providers(cfg: dict) -> list[dict]:
+    """Resolve env vars into concrete provider dicts. Skip ones without a key."""
+    out = []
+    for p in cfg.get("providers") or []:
+        name = p.get("name") or "?"
+        key_env = p.get("key_env") or ""
+        base_env = p.get("base_url_env") or ""
+        key = (os.environ.get(key_env) or "").strip() if key_env else ""
+        base = (os.environ.get(base_env) or "").strip() if base_env else ""
+        if not base:
+            base = (p.get("base_url") or "").strip()
+        model = (p.get("model") or "").strip()
+        if not key or not base or not model:
+            continue
+        out.append({
+            "name": name,
+            "base_url": base.rstrip("/"),
+            "model": model,
+            "key": key,
+        })
+    return out
 
 
 def endpoint(base_url: str) -> str:
@@ -82,7 +111,6 @@ def parse_json_content(text: str):
 
 
 def _thinking_variants(thinking: str) -> list[dict]:
-    """Payload fragments. Prefer the requested effort, then degrade only if the API rejects its fields."""
     mode = (thinking or "disabled").strip().lower()
     if mode in ("high", "xhigh"):
         return [
@@ -100,7 +128,6 @@ def _thinking_variants(thinking: str) -> list[dict]:
 
 
 def consume_sse(text: str) -> tuple[str, dict]:
-    """Fold an OpenAI-style server-sent stream into (content, usage)."""
     content: list[str] = []
     usage: dict = {}
     for raw in text.splitlines():
@@ -138,37 +165,56 @@ class Client:
     def __init__(self, root: str | None = None, usage_path: str | None = None):
         self.root = root or repo_root()
         self.cfg = load_llm_config(self.root)
-        self.key = (os.environ.get("DEEPSEEK_API_KEY") or "").strip()
+        self.providers = _resolve_providers(self.cfg)
         self.usage_path = usage_path
         self._lock = threading.Lock()
-        if not self.key:
-            raise InfraError("Missing environment variable DEEPSEEK_API_KEY")
+        if not self.providers:
+            raise InfraError("No usable LLM providers (missing keys or base URLs)")
 
     def chat(self, messages, *, step: str, temperature: float | None = None, json_mode: bool = False,
              max_tokens: int = 4096, extra: dict | None = None, thinking: str | None = None) -> str:
         temp = self.cfg["temperature"] if temperature is None else temperature
         requested_thinking = str(self.cfg.get("thinking") or "disabled") if thinking is None else thinking
-        variants = _thinking_variants(requested_thinking)
+        last_err = None
+        for prov in self.providers:
+            try:
+                return self._try_provider(prov, messages, step=step, temperature=temp,
+                                           json_mode=json_mode, max_tokens=max_tokens,
+                                           extra=extra, thinking=requested_thinking)
+            except InfraError as e:
+                # Auth / config problem on this provider — try next
+                print(f"  llm: {prov['name']} skipped: {e}", flush=True)
+                last_err = e
+                continue
+            except LLMError as e:
+                print(f"  llm: {prov['name']} failed: {e}", flush=True)
+                last_err = e
+                continue
+        raise LLMError(f"all providers failed: {last_err}")
+
+    def _try_provider(self, prov, messages, *, step, temperature, json_mode, max_tokens, extra, thinking):
+        variants = _thinking_variants(thinking)
         last_err = None
         for variant in variants:
             try:
-                return self._attempt_loop(messages, step=step, temperature=temp, json_mode=json_mode,
-                                           max_tokens=max_tokens, extra=extra, thinking_fields=variant)
+                return self._attempt_loop(prov, messages, step=step, temperature=temperature,
+                                           json_mode=json_mode, max_tokens=max_tokens,
+                                           extra=extra, thinking_fields=variant)
             except _RetryVariant as e:
                 last_err = e
-                print(f"  llm: server rejected thinking fields {list(variant)}; trying a smaller set", flush=True)
+                print(f"  llm: {prov['name']} rejected thinking fields; trying smaller set", flush=True)
                 continue
-        raise LLMError(f"DeepSeek rejected the request: {last_err}")
+        raise LLMError(str(last_err))
 
-    def _attempt_loop(self, messages, *, step, temperature, json_mode, max_tokens, extra, thinking_fields):
-        url = endpoint(str(self.cfg["base_url"]))
+    def _attempt_loop(self, prov, messages, *, step, temperature, json_mode, max_tokens, extra, thinking_fields):
+        url = endpoint(prov["base_url"])
         stream = True
         last = None
         attempt = 0
         while attempt < MAX_ATTEMPTS:
             attempt += 1
             body = {
-                "model": self.cfg["model"],
+                "model": prov["model"],
                 "messages": messages,
                 "temperature": float(temperature),
                 "max_tokens": int(max_tokens),
@@ -181,7 +227,7 @@ class Client:
                 body["stream_options"] = {"include_usage": True}
             data = json.dumps(body).encode("utf-8")
             req = urllib.request.Request(url, data=data, method="POST", headers={
-                "Authorization": "Bearer " + self.key,
+                "Authorization": "Bearer " + prov["key"],
                 "Content-Type": "application/json",
                 "Accept": "text/event-stream" if stream else "application/json",
             })
@@ -191,7 +237,6 @@ class Client:
                 if stream:
                     content, usage = consume_sse(raw)
                     if not content.strip() and not usage:
-                        # A non-stream JSON body, or an empty stream.
                         try:
                             payload = json.loads(raw)
                         except json.JSONDecodeError:
@@ -204,44 +249,45 @@ class Client:
                     payload = json.loads(raw)
                     content, usage = _content_from_payload(payload)
                 if usage.get("_truncated"):
-                    raise LLMError(f"{step}: response truncated (finish_reason=length); raise max_tokens or shrink the input")
+                    raise LLMError(f"{step}: response truncated")
                 if not content.strip():
                     raise LLMError(f"{step}: empty model content")
-                self._record(step, usage, extra)
+                self._record(step, usage, extra, prov)
                 return content
             except _StreamUnsupported:
                 raise
             except urllib.error.HTTPError as e:
                 detail = e.read()[:600].decode("utf-8", "replace")
                 if e.code in (401, 403):
-                    raise InfraError(f"DeepSeek rejected the API key (HTTP {e.code}). Check DEEPSEEK_API_KEY.") from None
+                    raise InfraError(f"auth failed (HTTP {e.code})") from None
                 if e.code == 400 and _looks_like_thinking_reject(detail):
                     raise _RetryVariant(detail[:240]) from None
                 if e.code == 400 and stream and _looks_like_stream_reject(detail):
-                    print("  llm: streaming rejected, falling back to a single response", flush=True)
+                    print(f"  llm: {prov['name']} streaming rejected, falling back", flush=True)
                     stream = False
                     attempt -= 1
                     continue
-                last = f"HTTP {e.code}: {detail[:240]}"
+                last = f"HTTP {e.code}: {detail[:200]}"
                 if e.code in (400, 404, 422):
-                    raise LLMError(f"DeepSeek request failed: {last}") from None
+                    raise LLMError(last) from None
             except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, LLMError) as e:
                 if isinstance(e, LLMError) and "truncated" in str(e):
                     raise
                 last = str(e)
             if attempt >= MAX_ATTEMPTS:
-                raise LLMError(f"DeepSeek request failed: {last}")
+                raise LLMError(f"{prov['name']} failed after retries: {last}")
             wait = RETRY_WAITS[min(attempt - 1, len(RETRY_WAITS) - 1)]
-            print(f"  llm retry {attempt} in {wait}s after {last}", flush=True)
+            print(f"  llm: {prov['name']} retry {attempt} in {wait}s", flush=True)
             time.sleep(wait)
-        raise LLMError(f"DeepSeek request failed: {last}")
+        raise LLMError(f"{prov['name']} failed: {last}")
 
-    def _record(self, step, usage, extra):
-        host = endpoint(str(self.cfg["base_url"])).split("/")[2]
+    def _record(self, step, usage, extra, prov):
+        host = endpoint(prov["base_url"]).split("/")[2]
         row = {
             "step": step,
+            "provider": prov["name"],
             "api": host,
-            "model": self.cfg["model"],
+            "model": prov["model"],
             "prompt_tokens": int(usage.get("prompt_tokens") or 0),
             "completion_tokens": int(usage.get("completion_tokens") or 0),
             "prompt_cache_hit_tokens": _cache_hit(usage),
@@ -256,7 +302,6 @@ class Client:
                 os.makedirs(os.path.dirname(self.usage_path) or ".", exist_ok=True)
                 with open(self.usage_path, "a", encoding="utf-8") as f:
                     f.write(line + "\n")
-            # Keep usage on disk for summaries/cost accounting, but do not spam per-call token counts in logs.
 
 
 def _content_from_payload(payload: dict) -> tuple[str, dict]:
@@ -269,8 +314,7 @@ def _content_from_payload(payload: dict) -> tuple[str, dict]:
 
 
 def _looks_like_stream_reject(detail: str) -> bool:
-    d = detail.lower()
-    return "stream" in d
+    return "stream" in detail.lower()
 
 
 class _RetryVariant(Exception):
@@ -293,8 +337,7 @@ def _cache_miss(usage: dict) -> int:
     return int(usage.get("prompt_cache_miss_tokens") or 0)
 
 
-# deepseek-flash 高峰价，人民币 / 百万 token。闲时是一半。
-# 高峰：北京时间工作日 9:00–12:00、14:00–18:00（不含法定节假日）。
+# Only DeepSeek has local price estimation (CNY).
 _PEAK_HIT = 0.04
 _PEAK_MISS = 2.0
 _PEAK_OUT = 8.0
@@ -334,6 +377,8 @@ def _row_tokens(row: dict) -> tuple[int, int, int, int]:
 
 
 def _row_cost(row: dict) -> tuple[float, bool]:
+    if (row.get("provider") or "").lower() != "deepseek":
+        return 0.0, False
     _prompt, out, hit, miss = _row_tokens(row)
     peak = is_peak(_parse_ts(row.get("ts")))
     factor = 1.0 if peak else 0.5
@@ -341,38 +386,23 @@ def _row_cost(row: dict) -> tuple[float, bool]:
     return cny, peak
 
 
-def price_note(band: str) -> str:
-    if band == "peak":
-        return ("deepseek-flash 高峰：输入未命中 ¥2 / 命中 ¥0.04 / 输出 ¥8 每百万 token"
-                "（北京时间工作日 9:00–12:00、14:00–18:00）")
-    if band == "mixed":
-        return ("deepseek-flash 按每条请求的北京时间计价。高峰是工作日 9:00–12:00、14:00–18:00，"
-                "其余是闲时、半价。未扣法定节假日。")
-    return ("deepseek-flash 闲时：输入未命中 ¥1 / 命中 ¥0.02 / 输出 ¥4 每百万 token"
-            "（高峰的半价。未扣法定节假日）")
-
-
 def format_usage(usage: dict) -> str:
     if not usage or not usage.get("calls"):
         return ""
-    band = usage.get("band") or "off-peak"
-    band_zh = {"peak": "高峰", "off-peak": "闲时", "mixed": "高峰+闲时"}.get(band, band)
-    split = ""
-    if band == "mixed":
-        split = (f"（高峰 ¥{float(usage.get('peak_cost_cny') or 0):.4f}"
-                 f" + 闲时 ¥{float(usage.get('offpeak_cost_cny') or 0):.4f}）")
-    return (
-        f"输入 {int(usage.get('prompt_tokens') or 0)}"
-        f"（缓存命中 {int(usage.get('prompt_cache_hit_tokens') or 0)}"
-        f" / 未命中 {int(usage.get('prompt_cache_miss_tokens') or 0)}），"
-        f"输出 {int(usage.get('completion_tokens') or 0)}。"
-        f"估算 ¥{float(usage.get('cost_cny') or 0):.4f}，{band_zh}{split}。"
-        f"{usage.get('price_note') or price_note(band)}"
-    )
+    pt = int(usage.get("prompt_tokens") or 0)
+    ct = int(usage.get("completion_tokens") or 0)
+    cost = float(usage.get("cost_cny") or 0)
+    providers = usage.get("providers") or []
+    prov_txt = "/".join(providers) if providers else ""
+    parts = [f"{pt} in / {ct} out"]
+    if prov_txt:
+        parts.append(prov_txt)
+    if cost > 0:
+        parts.append(f"¥{cost:.4f}")
+    return " · ".join(parts)
 
 
 def usage_summary(path: str | None, prices: dict | None = None) -> dict:
-    prices = prices or load_llm_config()
     rows = []
     if path and os.path.exists(path):
         with open(path, encoding="utf-8") as f:
@@ -381,39 +411,22 @@ def usage_summary(path: str | None, prices: dict | None = None) -> dict:
                 if line:
                     rows.append(json.loads(line))
     pt = ct = hit = miss = 0
-    cost = peak_cost = off_cost = 0.0
-    peak_calls = off_calls = 0
+    cost = 0.0
     by = {}
-    by_model = {}
+    providers_used = set()
     for r in rows:
         p, c, h, m = _row_tokens(r)
-        cny, peak = _row_cost(r)
+        cny, _ = _row_cost(r)
         pt += p
         ct += c
         hit += h
         miss += m
         cost += cny
-        if peak:
-            peak_cost += cny
-            peak_calls += 1
-        else:
-            off_cost += cny
-            off_calls += 1
+        providers_used.add(r.get("provider") or "?")
         b = by.setdefault(r.get("step") or "?", {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0})
         b["calls"] += 1
         b["prompt_tokens"] += p
         b["completion_tokens"] += c
-        mk = f"{r.get('api') or 'deepseek'} {r.get('model') or prices.get('model') or ''}".strip()
-        bucket = by_model.setdefault(mk, {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0})
-        bucket["calls"] += 1
-        bucket["prompt_tokens"] += p
-        bucket["completion_tokens"] += c
-    if peak_calls and off_calls:
-        band = "mixed"
-    elif peak_calls:
-        band = "peak"
-    else:
-        band = "off-peak"
     return {
         "calls": len(rows),
         "prompt_tokens": pt,
@@ -421,13 +434,6 @@ def usage_summary(path: str | None, prices: dict | None = None) -> dict:
         "prompt_cache_hit_tokens": hit,
         "prompt_cache_miss_tokens": miss,
         "cost_cny": round(cost, 6),
-        "peak_cost_cny": round(peak_cost, 6),
-        "offpeak_cost_cny": round(off_cost, 6),
-        "peak_calls": peak_calls,
-        "offpeak_calls": off_calls,
-        "band": band,
-        "price_note": price_note(band),
-        "model": prices.get("model"),
+        "providers": sorted(providers_used),
         "by_step": by,
-        "by_model": by_model,
     }

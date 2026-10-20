@@ -29,13 +29,20 @@ python scripts/check_feeds.py --show-id ignuk --list 5
 
 加在 **Settings → Secrets and variables → Actions → Repository secrets**。不要加在 Environment secrets。
 
+LLM 供应商按 `llm.yaml` 里的顺序尝试（Grok → GPT → DeepSeek），前一个失败自动回退到下一个。Base URL 从环境变量读，不写进仓库。
+
 | Secret | 要不要 | 作用 |
 |---|---|---|
-| `DEEPSEEK_API_KEY` | 必填 | DeepSeek 官方接口，模型 `deepseek-flash`，思考关掉 |
+| `XAI_API_KEY` | 可选 | Grok（xAI）密钥 |
+| `XAI_BASE_URL` | 可选 | Grok 的 base URL（例如 `https://api.x.ai/v1` 或自己的代理） |
+| `OPENAI_API_KEY` | 可选 | GPT 密钥 |
+| `OPENAI_BASE_URL` | 可选 | GPT 的 base URL（自己部署的也可以） |
+| `DEEPSEEK_API_KEY` | 必填 | DeepSeek 密钥（最后回退） |
+| `DEEPSEEK_BASE_URL` | 可选 | DeepSeek base URL，默认 `https://api.deepseek.com` |
 | `TELEGRAM_BOT_TOKEN` | 可选 | 上架后发一条通知 |
 | `TELEGRAM_CHAT_ID` | 可选 | 发给哪个聊天。两个缺一个就跳过 |
 
-日志不打印密钥。配置在 [llm.yaml](llm.yaml)，不要换成别的平台。
+没有密钥的供应商会被跳过。日志不打印密钥。
 
 ## 在线版和离线版
 
@@ -67,6 +74,8 @@ python scripts/check_feeds.py --show-id ignuk --list 5
 
 构建超时 300 分钟。Whisper 和说话人模型每次现下，大约十几秒，不进 Actions 缓存。翻译单次最多等 10 分钟，限流或超时时按 2、4、8、16 秒重试，最多 5 次。同一期最多同时翻 4 块。
 
+Token 用量会写进每期的 report。只有用到 DeepSeek 时才显示估算价格，其他供应商只显示 token 数。
+
 ## 本地测试
 
 ```bash
@@ -75,4 +84,4 @@ pip install -r requirements.txt pyyaml
 python -m unittest tests/test_pipeline.py
 ```
 
-做一整期需要本机 ffmpeg 和 DeepSeek 密钥，慢而且花钱，放在 Actions 里跑。
+做一整期需要本机 ffmpeg 和对应供应商密钥，慢而且花钱，放在 Actions 里跑。

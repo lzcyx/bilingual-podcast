@@ -1,8 +1,20 @@
-# OpenAI-compatible chat endpoint. Override with DEEPSEEK_BASE_URL / DEEPSEEK_MODEL.
-# The API key is NOT stored here — set the DEEPSEEK_API_KEY secret.
-base_url: https://api.deepseek.com
-model: deepseek-flash
+# Providers are tried in order (first success wins).
+# Base URLs and API keys come from environment variables / GitHub Secrets.
+# Do not put private base URLs here.
+providers:
+  - name: grok
+    model: grok-4
+    key_env: XAI_API_KEY
+    base_url_env: XAI_BASE_URL
+  - name: gpt
+    model: gpt-4o-mini
+    key_env: OPENAI_API_KEY
+    base_url_env: OPENAI_BASE_URL
+  - name: deepseek
+    model: deepseek-flash
+    key_env: DEEPSEEK_API_KEY
+    base_url_env: DEEPSEEK_BASE_URL
+
 temperature: 0.2
-# disabled sends thinking.type=disabled and reasoning_effort=none (no chain-of-thought).
+# disabled sends thinking.type=disabled and reasoning_effort=none.
 thinking: disabled
-# 费用按中国区人民币价估算：deepseek-flash 闲时输入未命中 ¥1、输出 ¥4 / 百万 token，高峰翻倍。

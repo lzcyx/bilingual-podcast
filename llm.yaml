@@ -3,11 +3,11 @@
 # Do not put private base URLs here.
 providers:
   - name: grok
-    model: grok-4
+    model: grok-4.7
     key_env: XAI_API_KEY
     base_url_env: XAI_BASE_URL
   - name: gpt
-    model: gpt-4o-mini
+    model: gpt-5.6-sol
     key_env: OPENAI_API_KEY
     base_url_env: OPENAI_BASE_URL
   - name: deepseek

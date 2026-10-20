@@ -33,16 +33,16 @@ LLM 供应商按 `llm.yaml` 里的顺序尝试（Grok → GPT → DeepSeek），
 
 | Secret | 要不要 | 作用 |
 |---|---|---|
-| `XAI_API_KEY` | 可选 | Grok（xAI）密钥 |
-| `XAI_BASE_URL` | 可选 | Grok 的 base URL（例如 `https://api.x.ai/v1` 或自己的代理） |
-| `OPENAI_API_KEY` | 可选 | GPT 密钥 |
-| `OPENAI_BASE_URL` | 可选 | GPT 的 base URL（自己部署的也可以） |
-| `DEEPSEEK_API_KEY` | 必填 | DeepSeek 密钥（最后回退） |
-| `DEEPSEEK_BASE_URL` | 可选 | DeepSeek base URL，默认 `https://api.deepseek.com` |
+| `XAI_API_KEY` | 三选一以上 | Grok 密钥。要和 `XAI_BASE_URL` 一起填 |
+| `XAI_BASE_URL` | 跟密钥走 | Grok 的 base URL，需以 `/v1` 结尾 |
+| `OPENAI_API_KEY` | 三选一以上 | GPT 密钥。要和 `OPENAI_BASE_URL` 一起填 |
+| `OPENAI_BASE_URL` | 跟密钥走 | GPT 的 base URL，需以 `/v1` 结尾 |
+| `DEEPSEEK_API_KEY` | 三选一以上 | DeepSeek 密钥（最后回退） |
+| `DEEPSEEK_BASE_URL` | 跟密钥走 | DeepSeek base URL，例如 `https://api.deepseek.com` |
 | `TELEGRAM_BOT_TOKEN` | 可选 | 上架后发一条通知 |
 | `TELEGRAM_CHAT_ID` | 可选 | 发给哪个聊天。两个缺一个就跳过 |
 
-没有密钥的供应商会被跳过。日志不打印密钥。
+至少要有一组密钥和对应的 base URL，否则构建直接失败，不计重试。缺密钥的供应商会被跳过。日志不打印密钥。
 
 ## 在线版和离线版
 

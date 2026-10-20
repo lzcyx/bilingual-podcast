@@ -29,7 +29,7 @@ python scripts/check_feeds.py --show-id ignuk --list 5
 
 加在 **Settings → Secrets and variables → Actions → Repository secrets**。不要加在 Environment secrets。
 
-LLM 供应商按 `llm.yaml` 里的顺序尝试（Grok → GPT → DeepSeek），前一个失败自动回退到下一个。Base URL 从环境变量读，不写进仓库。
+LLM 供应商按 `llm.yaml` 里的顺序尝试（GPT → DeepSeek → Grok），前一个失败自动回退到下一个。Base URL 从环境变量读，不写进仓库。
 
 | Secret | 要不要 | 作用 |
 |---|---|---|
@@ -37,7 +37,7 @@ LLM 供应商按 `llm.yaml` 里的顺序尝试（Grok → GPT → DeepSeek），
 | `XAI_BASE_URL` | 跟密钥走 | Grok 的 base URL，需以 `/v1` 结尾 |
 | `OPENAI_API_KEY` | 三选一以上 | GPT 密钥。要和 `OPENAI_BASE_URL` 一起填 |
 | `OPENAI_BASE_URL` | 跟密钥走 | GPT 的 base URL，需以 `/v1` 结尾 |
-| `DEEPSEEK_API_KEY` | 三选一以上 | DeepSeek 密钥（最后回退） |
+| `DEEPSEEK_API_KEY` | 三选一以上 | DeepSeek 密钥（GPT 失败后的回退） |
 | `DEEPSEEK_BASE_URL` | 跟密钥走 | DeepSeek base URL，例如 `https://api.deepseek.com` |
 | `TELEGRAM_BOT_TOKEN` | 可选 | 上架后发一条通知 |
 | `TELEGRAM_CHAT_ID` | 可选 | 发给哪个聊天。两个缺一个就跳过 |

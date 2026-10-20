@@ -9,16 +9,26 @@ import json
 import os
 import sys
 
-REQUIRED = (
-    "DEEPSEEK_API_KEY",
+# A provider is usable only when both its key and base URL are set.
+# At least one pair must be present. DeepSeek is a fallback, not required.
+PAIRS = (
+    ("XAI_API_KEY", "XAI_BASE_URL"),
+    ("OPENAI_API_KEY", "OPENAI_BASE_URL"),
+    ("DEEPSEEK_API_KEY", "DEEPSEEK_BASE_URL"),
 )
 
 
+def _set(name: str) -> bool:
+    return bool((os.environ.get(name) or "").strip())
+
+
 def main():
-    missing = [name for name in REQUIRED if not (os.environ.get(name) or "").strip()]
-    if not missing:
-        print("required secrets are set")
+    ready = [key for key, base in PAIRS if _set(key) and _set(base)]
+    if ready:
+        print("provider secrets set: " + ", ".join(ready))
         return
+    incomplete = [base for key, base in PAIRS if _set(key) and not _set(base)]
+    missing = incomplete or [key for key, _base in PAIRS]
     spec = {}
     raw = os.environ.get("EPISODE_SPEC") or ""
     if raw:

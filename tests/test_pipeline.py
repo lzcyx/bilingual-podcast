@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from datetime import datetime, timezone
+from unittest.mock import patch
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -18,7 +19,7 @@ from scripts.llm.schema import (  # noqa: E402
     chapter_bounds, fallback_chapters, validate_chapters, validate_edits, validate_fixes, validate_speakers,
 )
 from scripts.publish import apply_retention, classify_results, merge_index  # noqa: E402
-from scripts.llm.client import _thinking_variants, consume_sse  # noqa: E402
+from scripts.llm.client import _resolve_providers, _thinking_variants, consume_sse, load_llm_config  # noqa: E402
 from scripts.remove_ads import ad_speaker_ids, find_leading_ad_range, remap_lines  # noqa: E402
 
 RSS = """<?xml version="1.0"?>
@@ -357,6 +358,25 @@ class RetentionTests(unittest.TestCase):
         self.assertTrue(by["a"]["archived"])
         self.assertFalse(by["b"]["archived"])
         self.assertEqual(deleted, ["episodes/ignuk/a.html"])
+
+
+class LlmProviderConfigTests(unittest.TestCase):
+    def test_hqcdev_second_and_shares_gpt_gateway(self):
+        cfg = load_llm_config(ROOT)
+        providers = cfg["providers"]
+        self.assertEqual([p["name"] for p in providers], ["gpt", "hqcdev", "deepseek", "grok"])
+        self.assertEqual(providers[1]["model"], "deepseek-flash")
+        self.assertEqual(providers[1]["key_env"], providers[0]["key_env"])
+        self.assertEqual(providers[1]["base_url_env"], providers[0]["base_url_env"])
+
+        with patch.dict(os.environ, {
+            "OPENAI_API_KEY": "test-key",
+            "OPENAI_BASE_URL": "https://example.com/v1",
+        }, clear=True):
+            resolved = _resolve_providers(cfg)
+        self.assertEqual([p["name"] for p in resolved], ["gpt", "hqcdev"])
+        self.assertEqual(resolved[0]["base_url"], resolved[1]["base_url"])
+        self.assertEqual(resolved[0]["key"], resolved[1]["key"])
 
 
 class ClientReasoningTests(unittest.TestCase):

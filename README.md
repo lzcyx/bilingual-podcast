@@ -29,15 +29,15 @@ python scripts/check_feeds.py --show-id ignuk --list 5
 
 加在 **Settings → Secrets and variables → Actions → Repository secrets**。不要加在 Environment secrets。
 
-LLM 供应商按 `llm.yaml` 里的顺序尝试（GPT → DeepSeek → Grok），前一个失败自动回退到下一个。Base URL 从环境变量读，不写进仓库。
+LLM 供应商按 `llm.yaml` 里的顺序尝试（GPT → HQCDev DeepSeek Flash → DeepSeek → Grok），前一个失败自动回退到下一个。HQCDev DeepSeek Flash 使用和 GPT **完全相同的 `OPENAI_BASE_URL`（以及 `OPENAI_API_KEY`）**，无需额外配置密钥或 URL。Base URL 从环境变量读，不写进仓库。
 
 | Secret | 要不要 | 作用 |
 |---|---|---|
-| `XAI_API_KEY` | 三选一以上 | Grok 密钥。要和 `XAI_BASE_URL` 一起填 |
+| `XAI_API_KEY` | 至少一组 | Grok 密钥。要和 `XAI_BASE_URL` 一起填 |
 | `XAI_BASE_URL` | 跟密钥走 | Grok 的 base URL，需以 `/v1` 结尾 |
-| `OPENAI_API_KEY` | 三选一以上 | GPT 密钥。要和 `OPENAI_BASE_URL` 一起填 |
-| `OPENAI_BASE_URL` | 跟密钥走 | GPT 的 base URL，需以 `/v1` 结尾 |
-| `DEEPSEEK_API_KEY` | 三选一以上 | DeepSeek 密钥（GPT 失败后的回退） |
+| `OPENAI_API_KEY` | 至少一组 | GPT 和 HQCDev DeepSeek Flash 共用密钥。要和 `OPENAI_BASE_URL` 一起填 |
+| `OPENAI_BASE_URL` | 跟密钥走 | GPT 和 HQCDev DeepSeek Flash 共用的 base URL，需以 `/v1` 结尾 |
+| `DEEPSEEK_API_KEY` | 至少一组 | DeepSeek 密钥（GPT 和 HQCDev 均失败后的回退） |
 | `DEEPSEEK_BASE_URL` | 跟密钥走 | DeepSeek base URL，例如 `https://api.deepseek.com` |
 | `TELEGRAM_BOT_TOKEN` | 可选 | 上架后发一条通知 |
 | `TELEGRAM_CHAT_ID` | 可选 | 发给哪个聊天。两个缺一个就跳过 |

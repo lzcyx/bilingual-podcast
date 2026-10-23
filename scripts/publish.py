@@ -215,6 +215,7 @@ def _run_usage_line(results: dict) -> str:
         "cost_cny": 0.0, "peak_cost_cny": 0.0, "offpeak_cost_cny": 0.0,
         "peak_calls": 0, "offpeak_calls": 0,
     }
+    providers = set()
     for res in results.values():
         usage = ((res.get("report") or {}).get("usage") or {})
         if not usage.get("calls"):
@@ -225,21 +226,18 @@ def _run_usage_line(results: dict) -> str:
             totals[key] += int(usage.get(key) or 0)
         for key in ("cost_cny", "peak_cost_cny", "offpeak_cost_cny"):
             totals[key] += float(usage.get(key) or 0)
+        names = usage.get("providers") or []
+        if isinstance(names, str):
+            names = [names]
+        providers.update(str(name) for name in names if name)
     if not totals["calls"]:
         return ""
-    if totals["peak_calls"] and totals["offpeak_calls"]:
-        band = "mixed"
-    elif totals["peak_calls"]:
-        band = "peak"
-    else:
-        band = "off-peak"
-    totals["band"] = band
+    totals["providers"] = sorted(providers)
     sys.path.insert(0, os.path.join(ROOT, "scripts"))
-    from llm.client import format_usage, price_note
-    totals["price_note"] = price_note(band)
+    from llm.client import format_usage
     for key in ("cost_cny", "peak_cost_cny", "offpeak_cost_cny"):
         totals[key] = round(totals[key], 6)
-    return "DeepSeek：" + format_usage(totals)
+    return "LLM：" + format_usage(totals)
 
 
 def load_keep_days(path: str) -> int:
@@ -446,6 +444,23 @@ def stage(args):
     with open(args.plan, encoding="utf-8") as f:
         plan = json.load(f)
     results = load_results(args.results)
+    if args.replay:
+        # The source plan is a historical snapshot. Never replace newer state
+        # or increment failed-attempt counters for older failed build jobs.
+        current_seen = load_json(args.seen, {"bootstrapped": True, "items": {}})
+        current_failed = load_json(args.failed, {"items": {}})
+        source_ready = [ep for ep in plan.get("queue") or []
+                        if (results.get(ep["key"]) or {}).get("ok")]
+        if not source_ready:
+            raise ValueError("Replay has no successful episode artifacts to publish")
+        already = current_seen.get("items") or {}
+        plan["queue"] = [ep for ep in source_ready
+                         if (already.get(ep["key"]) or {}).get("reason") != "published"]
+        plan["seen"] = current_seen
+        plan["failed"] = current_failed
+        plan["bootstrapped_now"] = False
+        print(f"replay: {len(source_ready)} successful, "
+              f"{len(source_ready) - len(plan['queue'])} already published", flush=True)
     reject_huge(results)
     classified = classify_results(plan, results)
     seen, failed = classified["seen"], classified["failed"]
@@ -542,9 +557,16 @@ def stage(args):
     if plan.get("bootstrapped_now"):
         lines.append(f"第一次运行：已把 **{len(plan['seen']['items'])}** 期现有节目标为已处理（没有补做）。")
     lines.append(f"本次上架 **{len(staged)}** 期。归档删除 **{len(deleted)}** 个离线文件。问题 **{len(problems)}**。")
-    usage_line = _run_usage_line(results)
-    if usage_line:
-        lines.append(usage_line)
+    # Accounting is informational. Never block publishing a completed episode
+    # just because the usage schema, pricing, or formatting code changed.
+    try:
+        usage_line = _run_usage_line(results)
+    except Exception as exc:
+        print(f"WARNING: usage/cost summary unavailable: {redact(exc)}", file=sys.stderr)
+        lines.append("用量/费用统计不可用（不影响发布）。")
+    else:
+        if usage_line:
+            lines.append(usage_line)
     lines.append(f"站点大小 **{fmt_bytes(total)}**（上限 1 GB，单文件 < 100 MB）。保留天数 {keep_days}。")
     if over:
         lines.append("警告：删完过期离线版之后站点仍然超过 1 GB。")
@@ -564,6 +586,37 @@ def stage(args):
                   site_bytes=str(total))
     print(f"staged={len(staged)} archived={len(deleted)} problems={len(problems)} "
           f"changed={changed} site={fmt_bytes(total)}")
+
+
+def validate(args):
+    """Check essential site outputs without pushing, acknowledging, or notifying."""
+    index = load_json(os.path.join(args.out, "index.json"), None)
+    pending = load_json(args.pending, None)
+    if not isinstance(index, list) or not isinstance(pending, dict):
+        raise ValueError("staged index.json or pending_publish.json missing/invalid")
+    if not os.path.isfile(os.path.join(args.out, ".nojekyll")):
+        raise ValueError("missing .nojekyll")
+    for item in pending.get("published") or []:
+        entry = item.get("entry") or {}
+        path = rel_under(entry.get("html_url") or "", "episodes/")
+        if not path or ".." in path.split("/"):
+            raise ValueError(f"unsafe/missing episode URL: {item.get('key')}")
+        html = os.path.join(args.out, *path.split("/"))
+        if not os.path.isfile(html) or os.path.getsize(html) >= MAX_FILE_BYTES:
+            raise ValueError(f"missing or oversized staged HTML: {path}")
+        if not any(row.get("show_id") == item.get("show_id")
+                   and row.get("guid") == item.get("guid")
+                   and row.get("revision") == entry.get("revision") for row in index):
+            raise ValueError(f"episode missing from staged index: {item.get('key')}")
+        cover = rel_under(entry.get("cover_url") or "", "covers/")
+        if cover and (".." in cover.split("/") or
+                      not os.path.isfile(os.path.join(args.out, *cover.split("/")))):
+            raise ValueError(f"missing or unsafe cover: {cover}")
+    total = sum(dir_files(args.out).values())
+    if total > MAX_SITE_BYTES:
+        raise ValueError(f"staged site exceeds 1 GiB: {fmt_bytes(total)}")
+    print(f"validated staged site: {len(index)} indexed, "
+          f"{len(pending.get('published') or [])} pending, {fmt_bytes(total)}", flush=True)
 
 
 def ack(args):
@@ -603,13 +656,20 @@ def main():
     common.add_argument("--prev", default="site-prev")
     common.add_argument("--out", default="site-dist")
     common.add_argument("--pending", default="run/pending_publish.json")
-    sub.add_parser("stage", parents=[common])
+    stage_parser = sub.add_parser("stage", parents=[common])
+    stage_parser.add_argument("--replay", action="store_true",
+                              help="Reuse successful build artifacts without overwriting newer state")
+    sub.add_parser("validate", parents=[common])
     sub.add_parser("ack", parents=[common])
     args = ap.parse_args()
     if args.cmd == "ack":
         ack(args)
-    else:
+    elif args.cmd == "validate":
+        validate(args)
+    elif args.cmd == "stage":
         stage(args)
+    else:
+        ap.error("expected stage, validate, or ack")
 
 
 if __name__ == "__main__":

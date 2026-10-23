@@ -76,6 +76,22 @@ LLM 供应商按 `llm.yaml` 里的顺序尝试（GPT → DeepSeek → Grok），
 
 Token 用量会写进每期的 report。只有用到 DeepSeek 时才显示估算价格，其他供应商只显示 token 数。
 
+## 发布失败后恢复（无需重新翻译）
+
+如果构建成功但发布失败，打开 **Actions → Publish existing podcast artifacts → Run workflow**：
+
+1. 在 **source_run_id** 填入原始运行链接末尾的数字，例如 `39839532482`。
+2. **dry_run** 默认开启：只下载之前的 `plan` 和 `ep-*` Artifact，执行真实的站点组装与验证；不会推送 Pages、改动仓库状态或发送 Telegram 通知，也不会重新运行 Whisper / LLM。
+3. Dry Run 成功后，再以相同的 source_run_id 运行一次，**关闭 dry_run**，正式推送站点并更新发布状态。
+
+Artifact 只保留 7 天；到期后无法用此方式恢复。重放时使用仓库当前状态，已成功发布的节目不会重复发布或通知。成本/Token 统计只是附加信息，统计失败会显示警告，但不会阻止节目上架。HTML 丢失、索引错误、文件超限等影响站点正确性的异常依然会阻止发布。
+
+发布代码修改会触发免费的 `Publish preflight tests` 检查，正常播客流水线也会在耗时构建前执行同一组回归测试。你可以本地运行：
+
+```bash
+python -m unittest discover -s tests -p test_publish.py
+```
+
 ## 本地测试
 
 ```bash

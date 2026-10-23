@@ -42,6 +42,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Publish preflight tests
+        run: python -m unittest discover -s tests -p test_publish.py
       - name: Check feeds
         id: plan
         env:
@@ -156,6 +158,8 @@ jobs:
         run: |
           pip install pyyaml
           python scripts/publish.py stage --plan run/plan/plan.json --results run/results --prev site-prev --out site-dist
+      - name: Validate staged site
+        run: python scripts/publish.py validate --out site-dist
       - name: Push gh-pages
         id: pages
         if: steps.stage.outputs.changed == 'true'

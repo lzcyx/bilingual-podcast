@@ -1,0 +1,105 @@
+name: Publish existing podcast artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: "Original Actions run ID containing plan and ep-* artifacts"
+        required: true
+        type: string
+      dry_run:
+        description: "Validate only (no Pages push, state commit or Telegram)"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: bilingual-podcast
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  publish-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Publish preflight tests
+        run: python -m unittest tests.test_publish
+      - name: Download source plan
+        uses: actions/download-artifact@v4
+        with:
+          name: plan
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: run/plan
+      - name: Download built episodes
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ep-*
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: run/results
+      - name: Fetch current site
+        run: |
+          mkdir -p site-prev
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            git fetch --depth 1 origin gh-pages
+            git archive FETCH_HEAD | tar -x -C site-prev
+          else
+            echo "gh-pages does not exist yet"
+          fi
+      - name: Stage site from existing artifacts
+        id: stage
+        env:
+          PAGES_BASE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+        run: |
+          pip install pyyaml
+          python scripts/publish.py stage --replay --plan run/plan/plan.json --results run/results --prev site-prev --out site-dist
+      - name: Validate staged site
+        id: validation
+        run: python scripts/publish.py validate --out site-dist
+      - name: Dry run completed
+        if: ${{ inputs.dry_run }}
+        run: echo "Dry run passed. No git push, state update, or Telegram notification."
+      - name: Push gh-pages
+        id: pages
+        if: ${{ !inputs.dry_run && steps.stage.outputs.changed == 'true' && steps.stage.outputs.problems != 'true' }}
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site-dist
+          force_orphan: true
+          commit_message: "Recover podcast site from run ${{ inputs.source_run_id }}"
+      - name: Mark published episodes
+        if: ${{ !inputs.dry_run && steps.pages.outcome == 'success' }}
+        env:
+          PAGES_BASE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python scripts/publish.py ack
+      - name: Commit state
+        if: ${{ !inputs.dry_run && steps.validation.outcome == 'success' && steps.stage.outputs.problems != 'true' && steps.pages.outcome != 'failure' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state/seen.json state/failed.json state/index.json
+          if git diff --cached --quiet; then
+            echo "no state changes"
+          else
+            git commit -m "Update podcast state"
+            git push
+          fi
+      - name: Fail on staging problems
+        if: ${{ steps.stage.outputs.problems == 'true' || steps.pages.outcome == 'failure' }}
+        run: exit 1

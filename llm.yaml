@@ -6,6 +6,11 @@ providers:
     model: gpt-6.1-sol
     key_env: OPENAI_API_KEY
     base_url_env: OPENAI_BASE_URL
+  - name: hqcdev
+    model: deepseek-flash
+    # Shared gateway: use the exact same credentials and URL as GPT.
+    key_env: OPENAI_API_KEY
+    base_url_env: OPENAI_BASE_URL
   - name: deepseek
     model: deepseek-flash
     key_env: DEEPSEEK_API_KEY

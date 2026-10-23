@@ -1,5 +1,28 @@
 [
   {
+    "show_id": "consolewatch",
+    "guid": "c1214f86-cccd-11f1-8ffd-63b6b2478c30",
+    "show": "Next-Gen Console Watch",
+    "title": "Start Saving Now: Next-Gen Starts in 2028 - Next-Gen Console Watch",
+    "episode": "",
+    "pub_date": "2026-10-23T13:00:00+00:00",
+    "duration_sec": 1127,
+    "audio_mode": "offline",
+    "dynamic_ads": true,
+    "html_url": "https://lzcyx.github.io/bilingual-podcast/episodes/consolewatch/2026-10-23-start-saving-now-next-gen-starts-in-2028-next-gen-console-watch.html",
+    "cover_url": "https://lzcyx.github.io/bilingual-podcast/covers/consolewatch/2026-10-23-start-saving-now-next-gen-starts-in-2028-next-gen-console-watch.jpg",
+    "size_bytes": 6205199,
+    "speakers": [
+      "Ad",
+      "Daemon Hatfield",
+      "Ryan McCaffrey",
+      "Nick Limon"
+    ],
+    "revision": "fb58be9f8a54",
+    "created_at": "2026-10-23T19:58:33.890661+00:00",
+    "archived": false
+  },
+  {
     "show_id": "unlocked",
     "guid": "11817036-ce0f-11f1-bd16-bb1cd79bfbb5",
     "show": "Unlocked",

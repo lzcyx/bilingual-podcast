@@ -23950,6 +23950,15 @@
       "reason": "bootstrap",
       "marked_at": "2026-10-02T13:12:09.398216+00:00"
     },
+    "nvc\ta465395a-d3e6-11f1-b53b-ff5d05b11752": {
+      "show_id": "nvc",
+      "guid": "a465395a-d3e6-11f1-b53b-ff5d05b11752",
+      "title": "Looking Back at Ocarina of Time Before the Switch 2 Remake - NVC 832",
+      "pub_date": "2026-10-30T13:00:00+00:00",
+      "reason": "published",
+      "marked_at": "2026-10-30T21:10:36.747611+00:00",
+      "slug": "2026-10-30-looking-back-at-ocarina-of-time-before-the-switch-2-remake-nvc-832"
+    },
     "nvc\ta4c31a9572db04e0c5211e603e9cb26c": {
       "show_id": "nvc",
       "guid": "a4c31a9572db04e0c5211e603e9cb26c",
@@ -26944,6 +26953,15 @@
       "pub_date": "2025-08-08T16:45:00+00:00",
       "reason": "bootstrap",
       "marked_at": "2026-10-02T13:12:09.398216+00:00"
+    },
+    "opp\tdd7ac20c-bacd-4746-a5ff-cac2544856ea": {
+      "show_id": "opp",
+      "guid": "dd7ac20c-bacd-4746-a5ff-cac2544856ea",
+      "title": "Episode 552: Pumpkins and Pines",
+      "pub_date": "2026-10-30T16:45:00+00:00",
+      "reason": "published",
+      "marked_at": "2026-10-30T21:10:36.747611+00:00",
+      "slug": "2026-10-31-episode-552-pumpkins-and-pines"
     },
     "opp\te05aff2b-9560-4db4-915e-2cd1e37f04fc": {
       "show_id": "opp",

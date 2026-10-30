@@ -1,5 +1,50 @@
 [
   {
+    "show_id": "opp",
+    "guid": "dd7ac20c-bacd-4746-a5ff-cac2544856ea",
+    "show": "Official PlayStation Podcast",
+    "title": "Pumpkins and Pines",
+    "episode": "552",
+    "pub_date": "2026-10-30T16:45:00+00:00",
+    "duration_sec": 1575,
+    "audio_mode": "online",
+    "dynamic_ads": false,
+    "html_url": "https://lzcyx.github.io/bilingual-podcast/episodes/opp/2026-10-31-episode-552-pumpkins-and-pines.html",
+    "cover_url": "https://lzcyx.github.io/bilingual-podcast/covers/opp/2026-10-31-episode-552-pumpkins-and-pines.jpg",
+    "size_bytes": 155650,
+    "speakers": [
+      "Sid Shuman",
+      "Kristen Zitani",
+      "O'Dell Harmon Jr.",
+      "S3"
+    ],
+    "revision": "ddd6ec30934a",
+    "created_at": "2026-10-30T21:10:36.747611+00:00",
+    "archived": false
+  },
+  {
+    "show_id": "nvc",
+    "guid": "a465395a-d3e6-11f1-b53b-ff5d05b11752",
+    "show": "Nintendo Voice Chat",
+    "title": "Looking Back at Ocarina of Time Before the Switch 2 Remake",
+    "episode": "832",
+    "pub_date": "2026-10-30T13:00:00+00:00",
+    "duration_sec": 3446,
+    "audio_mode": "offline",
+    "dynamic_ads": true,
+    "html_url": "https://lzcyx.github.io/bilingual-podcast/episodes/nvc/2026-10-30-looking-back-at-ocarina-of-time-before-the-switch-2-remake-nvc-832.html",
+    "cover_url": "https://lzcyx.github.io/bilingual-podcast/covers/nvc/2026-10-30-looking-back-at-ocarina-of-time-before-the-switch-2-remake-nvc-832.jpg",
+    "size_bytes": 18641501,
+    "speakers": [
+      "Ad",
+      "Peer Schneider",
+      "S2"
+    ],
+    "revision": "1732de3e5719",
+    "created_at": "2026-10-30T21:10:36.747611+00:00",
+    "archived": false
+  },
+  {
     "show_id": "gamescoop",
     "guid": "8a6c2250-cf1f-11f1-b224-2708cc2c96a5",
     "show": "Game Scoop!",

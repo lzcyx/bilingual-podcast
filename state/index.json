@@ -1,5 +1,28 @@
 [
   {
+    "show_id": "gamescoop",
+    "guid": "7e545042-d4af-11f1-9947-779054887513",
+    "show": "Game Scoop!",
+    "title": "Phantom Blade Zero & Modern Warfare 4",
+    "episode": "877",
+    "pub_date": "2026-10-30T22:22:00+00:00",
+    "duration_sec": 3724,
+    "audio_mode": "offline",
+    "dynamic_ads": true,
+    "html_url": "https://lzcyx.github.io/bilingual-podcast/episodes/gamescoop/2026-10-31-game-scoop-877-phantom-blade-zero-modern-warfare-4.html",
+    "cover_url": "https://lzcyx.github.io/bilingual-podcast/covers/gamescoop/2026-10-31-game-scoop-877-phantom-blade-zero-modern-warfare-4.jpg",
+    "size_bytes": 20165930,
+    "speakers": [
+      "Ad",
+      "Daemon Hatfield",
+      "Tom Marks"
+    ],
+    "revision": "82a72a86fbcd",
+    "created_at": "2026-10-31T04:59:20.949027+00:00",
+    "archived": false,
+    "poll_url": ""
+  },
+  {
     "show_id": "opp",
     "guid": "dd7ac20c-bacd-4746-a5ff-cac2544856ea",
     "show": "Official PlayStation Podcast",
@@ -20,7 +43,8 @@
     ],
     "revision": "ddd6ec30934a",
     "created_at": "2026-10-30T21:10:36.747611+00:00",
-    "archived": false
+    "archived": false,
+    "poll_url": ""
   },
   {
     "show_id": "nvc",
@@ -42,7 +66,8 @@
     ],
     "revision": "1732de3e5719",
     "created_at": "2026-10-30T21:10:36.747611+00:00",
-    "archived": false
+    "archived": false,
+    "poll_url": ""
   },
   {
     "show_id": "gamescoop",
@@ -65,7 +90,8 @@
     ],
     "revision": "7d5842fc4ca1",
     "created_at": "2026-10-24T03:53:08.105281+00:00",
-    "archived": false
+    "archived": false,
+    "poll_url": ""
   },
   {
     "show_id": "consolewatch",
@@ -88,7 +114,8 @@
     ],
     "revision": "fb58be9f8a54",
     "created_at": "2026-10-23T19:58:33.890661+00:00",
-    "archived": false
+    "archived": false,
+    "poll_url": ""
   },
   {
     "show_id": "unlocked",
@@ -113,7 +140,8 @@
     ],
     "revision": "9d3257e25871",
     "created_at": "2026-10-23T01:51:18.561267+00:00",
-    "archived": false
+    "archived": false,
+    "poll_url": ""
   },
   {
     "show_id": "gamescoop",
@@ -137,7 +165,8 @@
     ],
     "revision": "af35c2ed8674",
     "created_at": "2026-10-16T20:18:17.548607+00:00",
-    "archived": false
+    "archived": false,
+    "poll_url": ""
   },
   {
     "show_id": "opp",
@@ -161,7 +190,8 @@
     ],
     "revision": "0ce397d9bb4f",
     "created_at": "2026-10-16T20:18:17.548607+00:00",
-    "archived": false
+    "archived": false,
+    "poll_url": ""
   },
   {
     "show_id": "consolewatch",
@@ -183,7 +213,8 @@
     ],
     "revision": "002f82bc908d",
     "created_at": "2026-10-16T20:18:17.548607+00:00",
-    "archived": false
+    "archived": false,
+    "poll_url": ""
   },
   {
     "show_id": "ignuk",
@@ -206,7 +237,8 @@
     ],
     "revision": "40279e4c315c",
     "created_at": "2026-10-16T20:18:17.548607+00:00",
-    "archived": false
+    "archived": false,
+    "poll_url": ""
   },
   {
     "show_id": "nvc",
@@ -228,7 +260,8 @@
     ],
     "revision": "dcfc8e46649d",
     "created_at": "2026-10-14T21:02:26.162567+00:00",
-    "archived": false
+    "archived": false,
+    "poll_url": ""
   },
   {
     "show_id": "gamescoop",
@@ -251,7 +284,8 @@
     ],
     "revision": "7830232fce47",
     "created_at": "2026-10-09T21:14:26.219085+00:00",
-    "archived": false
+    "archived": false,
+    "poll_url": ""
   },
   {
     "show_id": "opp",
@@ -275,7 +309,8 @@
     ],
     "revision": "2c7fce6cf071",
     "created_at": "2026-10-09T21:14:26.219085+00:00",
-    "archived": false
+    "archived": false,
+    "poll_url": ""
   },
   {
     "show_id": "consolewatch",
@@ -297,7 +332,8 @@
     ],
     "revision": "2d764a2c48f3",
     "created_at": "2026-10-09T21:14:26.219085+00:00",
-    "archived": false
+    "archived": false,
+    "poll_url": ""
   },
   {
     "show_id": "beyond",
@@ -321,7 +357,8 @@
     ],
     "revision": "8031bd9eb97f",
     "created_at": "2026-10-06T21:54:18.179343+00:00",
-    "archived": false
+    "archived": false,
+    "poll_url": ""
   },
   {
     "show_id": "nvc",
@@ -343,7 +380,8 @@
     ],
     "revision": "",
     "created_at": "2026-10-03T04:17:44.997374+00:00",
-    "archived": false
+    "archived": false,
+    "poll_url": ""
   },
   {
     "show_id": "consolewatch",
@@ -366,7 +404,8 @@
     ],
     "revision": "",
     "created_at": "2026-10-03T04:17:44.997374+00:00",
-    "archived": false
+    "archived": false,
+    "poll_url": ""
   },
   {
     "show_id": "opp",
@@ -390,7 +429,8 @@
     ],
     "revision": "4070e87f9a78",
     "created_at": "2026-10-03T05:09:47.634726+00:00",
-    "archived": false
+    "archived": false,
+    "poll_url": ""
   },
   {
     "show_id": "gamescoop",
@@ -413,7 +453,8 @@
     ],
     "revision": "",
     "created_at": "2026-10-03T04:17:44.997374+00:00",
-    "archived": false
+    "archived": false,
+    "poll_url": ""
   },
   {
     "show_id": "ignuk",
@@ -435,6 +476,7 @@
     ],
     "revision": "",
     "created_at": "2026-10-03T04:17:44.997374+00:00",
-    "archived": false
+    "archived": false,
+    "poll_url": ""
   }
 ]

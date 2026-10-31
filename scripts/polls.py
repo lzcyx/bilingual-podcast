@@ -9,8 +9,8 @@ import re
 from html.parser import HTMLParser
 from urllib.parse import urlsplit
 
-URL_RE = re.compile(r'https?://[^\\s<>\\"\\']+', re.I)
-POLL_WORDS = re.compile(r'\\b(?:polls?|vot(?:e|es|ing)|survey|surveys|ballot)\\b|投票|问卷|参与调查', re.I)
+URL_RE = re.compile(r"https?://[^\s<>\"']+", re.I)
+POLL_WORDS = re.compile(r'\b(?:polls?|vot(?:e|es|ing)|survey|surveys|ballot)\b|投票|问卷|参与调查', re.I)
 DIRECT_PATH = re.compile(r'/(?:polls?|votes?|surveys?|forms?)(?:/|$|[-?])', re.I)
 DIRECT_HOSTS = ('poll.fm', 'strawpoll.com', 'poll-maker.com', 'forms.gle',
                 'surveymonkey.com', 'typeform.com', 'pollunit.com')
@@ -42,7 +42,7 @@ class Links(HTMLParser):
 
 
 def normalize_url(value: str) -> str:
-    url = html.unescape(str(value or '')).strip().rstrip('.,;!?)\\]}>')
+    url = html.unescape(str(value or '')).strip().rstrip('.,;!?)]}>')
     if not url or len(url) > 2048:
         return ''
     try:

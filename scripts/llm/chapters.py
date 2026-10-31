@@ -20,6 +20,7 @@ Rules:
 - "i" is the index of the FIRST subtitle line of that chapter (the number in the first column). The first chapter MUST be i=0.
 - Indexes strictly increase and stay inside the episode.
 - Count: between {lo} and {hi} chapters. Each is usually 1–6 minutes. Cover the whole episode, including ads only as their own short chapter if they are obvious.
+- If a clear ad block appears (especially a speaker identified as "Ad"), isolate it as a short chapter titled "广告" / "Ad Break", and start a new chapter at the first program line after the ads. Never mark ordinary discussion as advertising.
 - Titles are short and specific (topic, game, or person). Simplified Chinese in "tr", English in "en".
 - Official Chinese game/film titles in 《》. Host names stay in English.
 """
@@ -54,6 +55,14 @@ def main():
     lo, hi = chapter_bounds(duration)
     target = max(lo, min(hi, max(lo, round(duration / 300))))
     body = _condensed(lines)
+    # Subtitle lines only carry speaker IDs; expose the confirmed Ad speaker IDs.
+    speakers_path = os.path.join(wd, "speakers.json")
+    if os.path.exists(speakers_path):
+        speakers = json.load(open(speakers_path, encoding="utf-8"))
+        ad_ids = [sid for sid, info in speakers.items()
+                  if isinstance(info, dict) and str(info.get("name", "")).strip() == "Ad"]
+        if ad_ids:
+            body = 'Advertising speaker IDs (named exactly "Ad"): ' + ', '.join(ad_ids) + "\n" + body
     # Very long episodes: keep every line's index and time, but the text is already clipped.
     client = Client(usage_path=os.path.join(wd, "usage.jsonl"))
     last = ""

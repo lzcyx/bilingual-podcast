@@ -40,7 +40,7 @@ UI_ZH = dict(show='显示', both='双语', srcName='EN', tgtName='中文', tgtFi
              modeSrc='EN', modeTgt='中文', loadFail='音频加载失败，请检查网络 · Audio failed to load',
              preparing='正在准备音频… {n}% · Preparing audio', decodeFail='音频解码失败 · Audio decode failed',
              style='外观 / Style', styleS='Spotify', styleB='Apple',
-             speakers='说话人 / Speakers')
+             speakers='说话人 / Speakers', skipAds='自动跳过广告 / Skip ads')
 
 
 def ui_strings(cfg):
@@ -60,7 +60,7 @@ def ui_strings(cfg):
                   chapN='Chapter {n}', min=' min', sec=' s', modeBoth=f'{src_label}/{tgt_label}',
                   modeSwap=f'{tgt_label}/{src_label}', modeSrc=src_label, modeTgt=tgt_name,
                   loadFail='Audio failed to load', preparing='Preparing audio… {n}%', decodeFail='Audio decode failed',
-                  style='Style', styleS='Spotify', styleB='Apple', speakers='Speakers')
+                  style='Style', styleS='Spotify', styleB='Apple', speakers='Speakers', skipAds='Auto-skip ads')
         tag = f'{src_label} · {tgt_label}'
     ui.update(cfg.get('ui', {}))
     return ui, cfg.get('bilingual_tag', tag)
@@ -192,6 +192,33 @@ def norm_chapters(ch, cues, duration):
     return out, errs, table
 
 
+# Whole-chapter skips are conservative: never skip a mix of ads and program speech.
+_AD_CHAPTER_TITLE = re.compile(
+    r'^(?:广告(?:时间|插播|时段|环节|片段)?|赞助(?:商(?:信息|口播|广告)?|内容|广告|口播)?'
+    r'|(?:ad|ads|advertisement|advertisements|commercial|commercials)(?:\s+(?:break|segment|spot))?'
+    r'|sponsor(?:ed)?(?:\s+(?:break|message|segment|spot))?)'
+    r'(?:\s*[:：—–-]\s*.+)?$', re.I)
+
+
+def mark_ad_chapters(chapters, cues, speakers):
+    """Flag confidently identified ads using final (possibly remapped) cue times."""
+    ad_ids = {sid for sid, meta in speakers.items()
+              if isinstance(meta, dict) and str(meta.get('name', '')).strip() == 'Ad'}
+    for k, chapter in enumerate(chapters):
+        end = chapters[k + 1]['i'] if k + 1 < len(chapters) else len(cues)
+        spoken = ad_spoken = 0.0
+        for cue in cues[chapter['i']:end]:
+            length = max(0.0, float(cue['e']) - float(cue['s']))
+            spoken += length
+            if cue.get('spk') in ad_ids:
+                ad_spoken += length
+        titled_ad = any(_AD_CHAPTER_TITLE.fullmatch(str(chapter.get(lang, '')).strip())
+                       for lang in ('tr', 'en'))
+        if titled_ad or (ad_spoken >= 3.0 and spoken > 0 and ad_spoken / spoken >= 0.85):
+            chapter['ad'] = True
+    return chapters
+
+
 def load_speakers(cfg, base, workdir, cues):
     """Return {S0: {name, color?}, ...}. Missing file / empty → {} (player degrades gracefully)."""
     candidates = []
@@ -266,6 +293,7 @@ def main():
     chapters, cerrs, table = norm_chapters(load_json(P(cfg.get('chapters', 'chapters.json'))), cues, duration)
     errs += cerrs
     speakers = load_speakers(cfg, base, workdir, cues)
+    mark_ad_chapters(chapters, cues, speakers)
     nspk = len({c.get('spk') for c in cues if c.get('spk')})
     print(f'{len(cues)} cues, {len(chapters)} chapters, duration {duration:.1f}s'
           + (f', {nspk} speakers' if nspk else ', no speaker data'))

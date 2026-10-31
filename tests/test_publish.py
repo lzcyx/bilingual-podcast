@@ -40,6 +40,7 @@ class PublishPreflightTests(unittest.TestCase):
             "key": key, "show_id": "unlocked", "guid": "guid-one",
             "slug": "test-episode", "show": "IGN Unlocked",
             "title": "Test episode", "pub_date": "2026-10-22T00:00:00+00:00",
+            "poll_url": "https://example.com/polls/episode-3",
         }
         source = os.path.join(td, "results", "ep-unlocked")
         os.makedirs(source, exist_ok=True)
@@ -88,6 +89,9 @@ class PublishPreflightTests(unittest.TestCase):
                 args.out, "episodes", "unlocked", "test-episode.html")))
             pending = publish.load_json(args.pending, {})
             self.assertEqual(len(pending["published"]), 1)
+            rows = publish.load_json(os.path.join(args.out, "index.json"), [])
+            self.assertEqual(rows[0]["show"], "IGN Unlocked")
+            self.assertEqual(rows[0]["poll_url"], "https://example.com/polls/episode-3")
             self.assertNotIn("unlocked\tguid-one",
                              publish.load_json(args.seen, {})["items"])
 

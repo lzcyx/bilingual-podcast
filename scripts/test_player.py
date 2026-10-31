@@ -42,7 +42,8 @@ async def run_device(p, browser, html, name, a):
     cfg = json.loads(re.search(r'<script id="cfg" type="application/json">(.*?)</script>', src, re.S).group(1))
     cues_raw = json.loads(re.search(r'<script id="cues" type="application/json">(.*?)</script>', src, re.S).group(1).replace('<\\/', '</'))
     ncues = len(cues_raw)
-    nch = len(json.loads(re.search(r'<script id="chapters" type="application/json">(.*?)</script>', src, re.S).group(1).replace('<\\/', '</')))
+    chapters_raw = json.loads(re.search(r'<script id="chapters" type="application/json">(.*?)</script>', src, re.S).group(1).replace('<\\/', '</'))
+    nch = len(chapters_raw)
     has_spk = any(c.get('spk') for c in cues_raw)
     m = re.search(r'<script id="speakers" type="application/json">(.*?)</script>', src, re.S)
     speakers = json.loads(m.group(1).replace('<\\/', '</')) if m else {}
@@ -64,6 +65,8 @@ async def run_device(p, browser, html, name, a):
     R['chapter_headers'] = [await J('document.querySelectorAll(".chap-h").length'), nch]
     R['progress_segments'] = await J('document.querySelectorAll(".sg").length')
     R['no_horizontal_overflow'] = await J('document.documentElement.scrollWidth<=window.innerWidth+1')
+    R['show_name_visible'] = cfg.get('show') in await J('document.querySelector("#top .show-name").textContent')
+    R['skip_ads_default'] = await J('document.getElementById("skipAdsBtn").getAttribute("aria-checked")==="true"')
     try:
         await pg.wait_for_function(au + '.readyState>=1', timeout=60000); R['audio_loaded'] = True
     except Exception:
@@ -74,6 +77,10 @@ async def run_device(p, browser, html, name, a):
         if d and abs(d - cfg['duration']) > 3:   # wrong / DAI-shifted test audio: cue times will not match
             R.setdefault('warnings', []).append(f'audio duration {d:.1f}s != player duration {cfg["duration"]}s')
     cue = min(ncues - 1, max(1, ncues // 3))
+    # Generic tap-to-seek should select program speech, not a skippable ad.
+    ad_cues = {i for k, ch in enumerate(chapters_raw) if ch.get('ad')
+               for i in range(ch['i'], chapters_raw[k + 1]['i'] if k + 1 < nch else ncues)}
+    cue = next((i for i in list(range(cue, ncues)) + list(range(cue)) if i not in ad_cues), cue)
     await J(f'document.querySelector(\'.cue[data-i="{cue}"]\').scrollIntoView({{block:"center"}})')
     await pg.tap(f'.cue[data-i="{cue}"]')
     # read the highlight right after the seek (poll briefly), not after a fixed sleep
@@ -131,6 +138,13 @@ async def run_device(p, browser, html, name, a):
     await pg.click('#menuBtn'); await pg.wait_for_timeout(150)
     await pg.click('#styleSeg button[data-style="S"]'); await pg.wait_for_timeout(200)
 
+    # The setting is default-on, togglable, and stored in the episode's localStorage.
+    await pg.click('#skipAdsBtn')  # the settings menu is open after the theme test
+    R['skip_ads_off'] = await J('document.getElementById("skipAdsBtn").getAttribute("aria-checked")==="false"')
+    R['skip_ads_saved'] = await J('JSON.parse(localStorage.getItem(JSON.parse(document.getElementById("cfg").textContent).key)).skipAds===false')
+    await pg.click('#skipAdsBtn')
+    R['skip_ads_reenabled'] = await J('document.getElementById("skipAdsBtn").getAttribute("aria-checked")==="true"')
+
     # Speaker labels
     if has_spk:
         R['spk_row_visible'] = await J('document.getElementById("spkRow") && getComputedStyle(document.getElementById("spkRow")).display !== "none"')
@@ -173,7 +187,8 @@ async def run_device(p, browser, html, name, a):
     ok = (R['cues'][0] == ncues and R['chapter_headers'][0] == nch and R['progress_segments'] == nch and not errs
           and R['sheet_open'] and R['sheet_jump']['closed'] and R['strip_off_persists'] and R['strip_restored']
           and modes == ['m-both+swap', 'm-en', 'm-zh', 'm-both'] and R['no_horizontal_overflow']
-          and R['tap_seek']['ok']
+          and R['tap_seek']['ok'] and R['show_name_visible']
+           and R['skip_ads_default'] and R['skip_ads_off'] and R['skip_ads_saved'] and R['skip_ads_reenabled']
           and R.get('style_to_B') and R.get('style_to_S') and R.get('style_B_persists') and R.get('style_keeps_position'))
     if has_spk:
         ok = ok and R.get('spk_row_visible') and R.get('spk_labels_on') and R.get('spk_labels_off') and R.get('spk_on_persists') and R.get('spk_turn_starts', 0) > 0

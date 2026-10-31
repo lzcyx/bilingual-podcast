@@ -24,6 +24,7 @@ button{font-family:inherit}
 #top .t{flex:1;min-width:0}
 #top .t b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #top .t span{display:block;font-size:12px;opacity:.65;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#top .t .show-name{font-weight:700;opacity:.92}
 .chip{border:0;background:rgba(255,255,255,.14);color:#fff;border-radius:999px;padding:7px 11px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
 .chip.on{background:rgba(255,255,255,.9);color:var(--c-base)}
 #menu{position:fixed;z-index:30;right:12px;top:calc(var(--safe-t) + 54px);background:rgba(20,24,40,.95);border-radius:14px;padding:8px;display:none;min-width:240px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
@@ -230,7 +231,7 @@ body.show-spk .cue.turn-start{margin-top:12px}
 <body class="m-both paused theme-__DEFAULT_THEME__">
 <div id="bg"></div><div id="shade"></div>
 <div id="top">
- <div class="t"><b>__TOPTITLE__</b><span>__TOPSUB__</span></div>
+ <div class="t"><b>__TOPTITLE__</b><span class="show-name" title="__SHOWNAME__">🎙 __SHOWNAME__</span></div>
  <button class="chip" id="modeBtn" aria-label="Display mode">__UI_modeBoth__</button>
  <button class="chip" id="menuBtn" aria-label="Settings">⋯</button>
 </div>
@@ -239,6 +240,7 @@ body.show-spk .cue.turn-start{margin-top:12px}
  <div class="row">__UI_tgtFirst__<button class="chip" id="swapBtn">__UI_off__</button></div>
  <div class="row">__UI_strip__<button class="chip" id="stripBtn">__UI_on__</button></div>
  <div class="row">__UI_autoFollow__<button class="chip" id="followBtn2">__UI_on__</button></div>
+ <div class="row">__UI_skipAds__<button class="chip on" id="skipAdsBtn" role="switch" aria-checked="true">__UI_on__</button></div>
  <div class="row">__UI_big__<button class="chip" id="bigBtn">__UI_off__</button></div>
  <div class="row">__UI_style__<div class="seg" id="styleSeg"><button data-style="S">__UI_styleS__</button><button data-style="B">__UI_styleB__</button></div></div>
  <div class="row" id="spkRow" style="display:none">__UI_speakers__<button class="chip" id="spkBtn">__UI_on__</button></div>
@@ -316,7 +318,7 @@ $('chCount').textContent=U('chCount',chaps.length);
 $('clist').innerHTML=chaps.map(function(c,k){return '<div class="ci" data-ch="'+k+'"><div class="no">'+(k+1)+'</div><div class="bd"><div class="z">'+esc(c.tr)+'</div><div class="e">'+esc(c.en)+'</div></div><div class="tm">'+fmt(c.s)+'<small>'+fdur(c.e-c.s)+'</small></div></div>'}).join('');
 var cis=$('clist').children;
 // prefs
-var mode=st.mode||'both',swap=!!st.swap,follow=st.follow!==false,big=!!st.big,strip=st.strip!==false,speeds=[0.75,1,1.25,1.5,1.75,2],rate=st.rate||1,theme=(st.theme==='B'||st.theme==='S')?st.theme:(CFG.defaultTheme||'S'),showSpk=st.showSpk!==false;
+var mode=st.mode||'both',swap=!!st.swap,follow=st.follow!==false,big=!!st.big,strip=st.strip!==false,speeds=[0.75,1,1.25,1.5,1.75,2],rate=st.rate||1,theme=(st.theme==='B'||st.theme==='S')?st.theme:(CFG.defaultTheme||'S'),showSpk=st.showSpk!==false,skipAds=st.skipAds!==false;
 function tog(id,v){$(id).textContent=v?U('on'):U('off');$(id).classList.toggle('on',v)}
 function applyPrefs(){body.classList.remove('m-both','m-en','m-zh','theme-S','theme-B');body.classList.add('m-'+mode);body.classList.add('theme-'+theme);
  body.classList.toggle('swap',swap);body.classList.toggle('big',big);body.classList.toggle('strip-off',!strip);
@@ -324,13 +326,14 @@ function applyPrefs(){body.classList.remove('m-both','m-en','m-zh','theme-S','th
  [].forEach.call($('modeSeg').children,function(b){b.classList.toggle('on',b.dataset.m===mode)});
  [].forEach.call($('styleSeg').children,function(b){b.classList.toggle('on',b.dataset.style===theme)});
  $('modeBtn').textContent=mode==='both'?(swap?U('modeSwap'):U('modeBoth')):(mode==='en'?U('modeSrc'):U('modeTgt'));
- tog('swapBtn',swap);tog('bigBtn',big);tog('followBtn2',follow);tog('stripBtn',strip);
+ tog('swapBtn',swap);tog('bigBtn',big);tog('followBtn2',follow);tog('stripBtn',strip);tog('skipAdsBtn',skipAds);
+ $('skipAdsBtn').setAttribute('aria-checked',skipAds?'true':'false');
  if($('spkBtn'))tog('spkBtn',showSpk);
  $('follow').classList.toggle('off',!follow);
  $('handle').setAttribute('aria-expanded',strip?'true':'false');
  $('speed').textContent=(rate+'').replace(/^0/,'')+'×';au.playbackRate=rate;au.defaultPlaybackRate=rate;
  var bc=theme==='S'?'__C_BASE_S__':'__C_BASE_B__';var tc=$('themeColor'); if(tc) tc.setAttribute('content', bc);document.documentElement.style.background=bc;
- st.mode=mode;st.swap=swap;st.follow=follow;st.big=big;st.rate=rate;st.strip=strip;st.theme=theme;st.showSpk=showSpk;save();
+ st.mode=mode;st.swap=swap;st.follow=follow;st.big=big;st.rate=rate;st.strip=strip;st.theme=theme;st.showSpk=showSpk;st.skipAds=skipAds;save();
  requestAnimationFrame(setPH)}
 function setPH(){document.documentElement.style.setProperty('--ph',$('player').offsetHeight+'px')}
 applyPrefs();
@@ -347,6 +350,7 @@ $('stripBtn').onclick=function(){setStrip(!strip)};
 $('handle').onclick=function(){setStrip(!strip)};
 $('hideStrip').onclick=function(){setStrip(false)};
 $('followBtn2').onclick=$('follow').onclick=function(){setFollow(!follow)};
+$('skipAdsBtn').onclick=function(){skipAds=!skipAds;applyPrefs();if(skipAds)maybeSkipAd()};
 function setFollow(v){follow=v;applyPrefs();$('back').classList.toggle('show',!follow&&cur>=0);if(follow)recenter(false)}
 $('speed').onclick=function(){var i=speeds.indexOf(rate);rate=speeds[(i+1)%speeds.length];applyPrefs()};
 // tracking
@@ -396,12 +400,30 @@ $('play').onclick=function(){au.paused?play():au.pause()};
 $('b15').onclick=function(){seek(au.currentTime-15)};$('f30').onclick=function(){seek(au.currentTime+30)};
 function seek(t){t=Math.max(0,Math.min(dur()-0.2,t));try{au.currentTime=t}catch(e){}pendingSeek=t;update(true)}
 var pendingSeek=null;
+// Skip only confirmed ad chapters, landing at the first subsequent program chapter.
+// Pre-roll was already cut from offline audio and the final times were remapped.
+var skippingAd=false;
+function maybeSkipAd(t){
+ if(!skipAds||au.paused||!au.src||au.readyState<1||skippingAd)return false;
+ t=t==null?au.currentTime:t;
+ var k=findCh(t);
+ if(!chaps[k]||!chaps[k].ad)return false;
+ var next=k+1;
+ while(next<chaps.length&&chaps[next].ad)next++;
+ if(next>=chaps.length)return false;
+ var dest=chaps[next].s+0.01;
+ if(dest<=t+0.05)return false;
+ skippingAd=true;
+ try{seek(dest)}finally{skippingAd=false}
+ return true
+}
 function curT(){return au.src&&au.readyState>0?au.currentTime:(pendingSeek!=null?pendingSeek:(+st.pos||0))}
 var PI_PLAY='M8 5v14l11-7z',PI_PAUSE='M6 19h4V5H6v14zm8-14v14h4V5h-4z';
 function setIcon(){$('pi').firstChild.setAttribute('d',au.paused?PI_PLAY:PI_PAUSE);body.classList.toggle('paused',au.paused)}
-au.addEventListener('play',setIcon);au.addEventListener('pause',function(){setIcon();st.pos=au.currentTime;save()});
+au.addEventListener('play',setIcon);au.addEventListener('play',function(){maybeSkipAd()});au.addEventListener('pause',function(){setIcon();st.pos=au.currentTime;save()});
 var dragging=false,lastSave=0;
 function update(instant){var t=curT(),d=dur();
+ if(maybeSkipAd(t))return;
  if(!dragging){paintBar(t);$('el').textContent=fmt(t);$('rem').textContent='-'+fmt(d-t)}
  setCh(findCh(t));setCur(find(t),instant===true);
  var now=Date.now();if(au.src&&au.readyState>0&&now-lastSave>2000){lastSave=now;st.pos=t;save()}}

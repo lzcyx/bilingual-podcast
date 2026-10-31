@@ -21,6 +21,7 @@ from scripts.llm.schema import (  # noqa: E402
 from scripts.publish import apply_retention, classify_results, merge_index  # noqa: E402
 from scripts.llm.client import _resolve_providers, _thinking_variants, consume_sse, load_llm_config  # noqa: E402
 from scripts.remove_ads import ad_speaker_ids, find_leading_ad_range, remap_lines  # noqa: E402
+from scripts.build import mark_ad_chapters  # noqa: E402
 
 RSS = """<?xml version="1.0"?>
 <rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
@@ -122,6 +123,40 @@ class FeedTests(unittest.TestCase):
         with self.assertRaises(Exception):
             build_plan(SHOWS, {"bootstrapped": True, "items": {}}, {"items": {}}, [], items(),
                        show_id="ignuk", guid="does-not-exist")
+
+
+class AdChapterTests(unittest.TestCase):
+    def test_marks_explicit_ad_title_and_predominantly_ad_speaker(self):
+        speakers = {"S0": {"name": "Host"}, "S1": {"name": "Ad"}}
+        cues = [
+            {"s": 0, "e": 10, "spk": "S0"},
+            {"s": 10, "e": 18, "spk": "S1"},
+            {"s": 18, "e": 28, "spk": "S0"},
+            {"s": 28, "e": 32, "spk": "S1"},
+            {"s": 32, "e": 33, "spk": "S0"},
+            {"s": 33, "e": 45, "spk": "S0"},
+        ]
+        chapters = [
+            {"i": 0, "tr": "游戏新闻", "en": "News"},
+            {"i": 1, "tr": "节目插播", "en": "Interstitial"},
+            {"i": 2, "tr": "广告：赞助内容", "en": "Ad Break"},
+            {"i": 3, "tr": "讨论广告行业", "en": "Advertising Industry"},
+            {"i": 5, "tr": "正片继续", "en": "Back to the Show"},
+        ]
+        result = mark_ad_chapters(chapters, cues, speakers)
+        self.assertEqual([bool(c.get("ad")) for c in result], [False, True, True, False, False])
+
+    def test_mixed_chapter_does_not_skip_program_speech(self):
+        chapters = [{"i": 0, "tr": "赞助行业的新闻", "en": "Sponsor News"}]
+        cues = [{"s": 0, "e": 4, "spk": "S1"},
+                {"s": 4, "e": 24, "spk": "S0"}]
+        speakers = {"S0": {"name": "Host"}, "S1": {"name": "Ad"}}
+        self.assertFalse(mark_ad_chapters(chapters, cues, speakers)[0].get("ad", False))
+
+    def test_only_exact_ad_speaker_is_used(self):
+        chapters = [{"i": 0, "tr": "开始", "en": "Intro"}]
+        cues = [{"s": 0, "e": 6, "spk": "S1"}]
+        self.assertFalse(mark_ad_chapters(chapters, cues, {"S1": {"name": "Advertisement"}})[0].get("ad", False))
 
 
 class AdRemovalTests(unittest.TestCase):

@@ -10,6 +10,11 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 
+try:
+    from .polls import find_poll_url
+except ImportError:  # direct CLI entry point imports feeds from scripts/
+    from polls import find_poll_url
+
 CST = timezone(timedelta(hours=8))
 UA = {"User-Agent": "bilingual-podcast/1.0 (+https://github.com/lzcyx/bilingual-podcast)"}
 
@@ -133,6 +138,7 @@ def parse_rss(xml_bytes: bytes | str, show_id: str, show_name: str, rss_url: str
             "title": title,
             "episode": ep,
             "page_url": _text(it, "link"),
+            "poll_url": find_poll_url(_text(it, "description"), _text(it, "encoded"), _text(it, "summary")),
             "audio_url": audio_url,
             "enclosure_type": enc_type,
             "pub_date": pub.isoformat() if pub else "",

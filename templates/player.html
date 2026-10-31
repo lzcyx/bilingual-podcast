@@ -24,7 +24,6 @@ button{font-family:inherit}
 #top .t{flex:1;min-width:0}
 #top .t b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #top .t span{display:block;font-size:12px;opacity:.65;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#top .t .show-name{font-weight:700;opacity:.92}
 .chip{border:0;background:rgba(255,255,255,.14);color:#fff;border-radius:999px;padding:7px 11px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
 .chip.on{background:rgba(255,255,255,.9);color:var(--c-base)}
 #menu{position:fixed;z-index:30;right:12px;top:calc(var(--safe-t) + 54px);background:rgba(20,24,40,.95);border-radius:14px;padding:8px;display:none;min-width:240px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
@@ -231,7 +230,7 @@ body.show-spk .cue.turn-start{margin-top:12px}
 <body class="m-both paused theme-__DEFAULT_THEME__">
 <div id="bg"></div><div id="shade"></div>
 <div id="top">
- <div class="t"><b>__TOPTITLE__</b><span class="show-name" title="__SHOWNAME__">🎙 __SHOWNAME__</span></div>
+ <div class="t"><b>__TOPTITLE__</b><span>__TOPSUB__</span></div>
  <button class="chip" id="modeBtn" aria-label="Display mode">__UI_modeBoth__</button>
  <button class="chip" id="menuBtn" aria-label="Settings">⋯</button>
 </div>

@@ -23,6 +23,7 @@ from html.parser import HTMLParser
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import dai  # noqa: E402
+from polls import find_poll_url  # noqa: E402
 
 UA = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36'}
 ITUNES = '{http://www.itunes.com/dtds/podcast-1.0.dtd}'
@@ -93,7 +94,7 @@ def from_page(url):
     if not title:
         m = re.search(r'<title>(.*?)</title>', src, re.S | re.I); title = html.unescape(m.group(1)).strip() if m else None
     return src, tp.text(), dict(page_url=url, page_title=title, image=meta_tag(src, 'og:image', 'twitter:image'),
-                                description=meta_tag(src, 'og:description', 'description'),
+                                description=meta_tag(src, 'og:description', 'description'), poll_url=find_poll_url(body),
                                 site=meta_tag(src, 'og:site_name'), audio_candidates=mp3s)
 
 
@@ -118,7 +119,8 @@ def from_rss(feed, page=None, mp3=None, title_hint=None):
             best = (score, dict(title=t, audio_url=eu, link=link, pub_date=it.findtext('pubDate'),
                                 episode=it.findtext(ITUNES + 'episode'), duration=it.findtext(ITUNES + 'duration'),
                                 image=ii.get('href') if ii is not None else None,
-                                description=re.sub(r'[ \t]+', ' ', html.unescape(re.sub('<[^>]+>', ' ', it.findtext('description') or ''))).strip()))
+                                description=re.sub(r'[ \t]+', ' ', html.unescape(re.sub('<[^>]+>', ' ', it.findtext('description') or ''))).strip(),
+                                 poll_url=find_poll_url(it.findtext('description') or '', it.findtext('{http://purl.org/rss/1.0/modules/content/}encoded') or '')))
     return dict(show=show, show_image=show_img, item=best[1] if best else None)
 
 
@@ -148,6 +150,7 @@ def main():
         meta.setdefault('image', it.get('image') or r['show_image'])
         if not meta.get('image'): meta['image'] = it.get('image') or r['show_image']
         meta['episode'] = it.get('episode'); meta['rss_title'] = it.get('title')
+        if it.get('poll_url'): meta['poll_url'] = it['poll_url']
         if not a.page and it.get('description'):
             open(os.path.join(wd, 'page.txt'), 'w', encoding='utf-8').write(f"TITLE: {it.get('title')}\n\n{it['description']}\n")
     ep = meta.get('episode') or (re.search(r'(?:episode|ep\.?)\s*#?\s*(\d+)', meta.get('page_title') or meta.get('rss_title') or '', re.I) or [None, None])[1]

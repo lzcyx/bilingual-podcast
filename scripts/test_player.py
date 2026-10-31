@@ -65,7 +65,7 @@ async def run_device(p, browser, html, name, a):
     R['chapter_headers'] = [await J('document.querySelectorAll(".chap-h").length'), nch]
     R['progress_segments'] = await J('document.querySelectorAll(".sg").length')
     R['no_horizontal_overflow'] = await J('document.documentElement.scrollWidth<=window.innerWidth+1')
-    R['show_name_visible'] = cfg.get('show') in await J('document.querySelector("#top .show-name").textContent')
+    R['top_subtitle_preserved'] = await J('document.querySelector("#top .t span")?.textContent') == cfg.get('topSub')
     R['skip_ads_default'] = await J('document.getElementById("skipAdsBtn").getAttribute("aria-checked")==="true"')
     try:
         await pg.wait_for_function(au + '.readyState>=1', timeout=60000); R['audio_loaded'] = True
@@ -187,7 +187,7 @@ async def run_device(p, browser, html, name, a):
     ok = (R['cues'][0] == ncues and R['chapter_headers'][0] == nch and R['progress_segments'] == nch and not errs
           and R['sheet_open'] and R['sheet_jump']['closed'] and R['strip_off_persists'] and R['strip_restored']
           and modes == ['m-both+swap', 'm-en', 'm-zh', 'm-both'] and R['no_horizontal_overflow']
-          and R['tap_seek']['ok'] and R['show_name_visible']
+          and R['tap_seek']['ok'] and R['top_subtitle_preserved']
            and R['skip_ads_default'] and R['skip_ads_off'] and R['skip_ads_saved'] and R['skip_ads_reenabled']
           and R.get('style_to_B') and R.get('style_to_S') and R.get('style_B_persists') and R.get('style_keeps_position'))
     if has_spk:

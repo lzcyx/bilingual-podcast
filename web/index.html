@@ -37,12 +37,15 @@
   }
   .chip.on { background: #fff; color: #101420; }
   main { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
-  a.card, div.card {
-    display: grid; grid-template-columns: 72px 1fr; gap: 12px; align-items: center;
-    text-decoration: none; color: inherit;
-    background: rgba(255,255,255,.06); border-radius: 16px; padding: 10px;
-  }
-  a.card:active { background: rgba(255,255,255,.12); }
+  .card { background: rgba(255,255,255,.06); border-radius: 16px; padding: 10px; }
+  .episode-link { display: grid; grid-template-columns: 72px minmax(0,1fr);
+    gap: 12px; align-items: center; color: inherit; text-decoration: none; }
+  a.episode-link:active { opacity: .8; }
+  .show-name { color: #acb7cb; font-size: 12px; font-weight: 650; margin-bottom: 3px; }
+  .poll-link { display: inline-flex; margin: 8px 0 0 84px; padding: 5px 10px;
+    border-radius: 999px; background: rgba(255,255,255,.1); color: #fff;
+    text-decoration: none; font-size: 13px; font-weight: 650; }
+  .poll-link:active { background: rgba(255,255,255,.2); }
   .cover {
     width: 72px; height: 72px; border-radius: 12px; object-fit: cover; background: #1c2233;
   }
@@ -172,9 +175,11 @@ function renderList() {
   }
   items.forEach((ep) => {
     const archived = !!ep.archived;
-    const el = document.createElement(archived ? "div" : "a");
+    const el = document.createElement("div");
     el.className = "card";
-    if (!archived) el.href = hrefOf(ep);
+    const episodeLink = document.createElement(archived ? "div" : "a");
+    episodeLink.className = "episode-link";
+    if (!archived) episodeLink.href = hrefOf(ep);
     const img = document.createElement("img");
     img.className = "cover";
     img.alt = "";
@@ -182,6 +187,9 @@ function renderList() {
     if (src) img.src = src;
     else img.classList.add("ph");
     const body = document.createElement("div");
+    const show = document.createElement("div");
+    show.className = "show-name";
+    show.textContent = ep.show || ep.show_id || "播客";
     const title = document.createElement("div");
     title.className = "title";
     title.textContent = ep.title || "未命名";
@@ -208,8 +216,24 @@ function renderList() {
       arch.textContent = "已归档";
       meta.appendChild(arch);
     }
-    body.append(title, meta);
-    el.append(img, body);
+    body.append(show, title, meta);
+    episodeLink.append(img, body);
+    el.appendChild(episodeLink);
+    const pollUrl = String(ep.poll_url || "").trim();
+    if (/^https?:\/\//i.test(pollUrl)) {
+      try {
+        const url = new URL(pollUrl);
+        if (url.protocol === "https:" || url.protocol === "http:") {
+          const poll = document.createElement("a");
+          poll.className = "poll-link";
+          poll.textContent = "参与投票";
+          poll.href = url.href;
+          poll.target = "_blank";
+          poll.rel = "noopener noreferrer";
+          el.appendChild(poll);
+        }
+      } catch (e) { /* Invalid URL: do not show a broken vote link. */ }
+    }
     list.appendChild(el);
   });
 }

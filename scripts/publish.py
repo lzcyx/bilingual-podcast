@@ -25,7 +25,7 @@ from datetime import datetime, timezone
 PUBLIC_FIELDS = (
     "show_id", "guid", "show", "title", "episode", "pub_date", "duration_sec",
     "audio_mode", "dynamic_ads", "html_url", "cover_url", "size_bytes", "speakers",
-    "revision", "created_at", "archived",
+    "revision", "created_at", "archived", "poll_url",
 )
 MAX_ATTEMPTS = 3
 MAX_FILE_BYTES = 100 * 1024 * 1024
@@ -285,6 +285,7 @@ def public_entry(ep, res, base, created_at):
         "show_id": show_id,
         "guid": ep["guid"],
         "show": res.get("show") or ep.get("show") or show_id,
+        "poll_url": res.get("poll_url") or ep.get("poll_url") or "",
         "title": res.get("title") or ep.get("title") or "",
         "episode": str(res.get("episode") or ep.get("episode") or ""),
         "pub_date": ep.get("pub_date") or res.get("pub_date") or "",

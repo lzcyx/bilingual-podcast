@@ -1,0 +1,56 @@
+name: Podcast listing and poll link tests
+
+on:
+  pull_request:
+    paths:
+      - "web/index.html"
+      - "scripts/feeds.py"
+      - "scripts/fetch_episode.py"
+      - "scripts/build_episode.py"
+      - "scripts/publish.py"
+      - "scripts/polls.py"
+      - "templates/player.html"
+      - "tests/test_polls.py"
+      - "tests/test_publish.py"
+      - ".github/workflows/poll-index-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "web/index.html"
+      - "scripts/feeds.py"
+      - "scripts/fetch_episode.py"
+      - "scripts/build_episode.py"
+      - "scripts/publish.py"
+      - "scripts/polls.py"
+      - "templates/player.html"
+      - "tests/test_polls.py"
+      - "tests/test_publish.py"
+      - ".github/workflows/poll-index-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Poll link detection and publish preflight
+        run: |
+          python -m unittest discover -s tests -p test_polls.py
+          python -m unittest discover -s tests -p test_publish.py
+      - name: Check listing JavaScript syntax
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path("web/index.html").read_text(encoding="utf-8")
+          match = re.search(r"<script>([\s\S]*?)</script>", html)
+          assert match, "missing inline script"
+          Path("/tmp/podcast-list.js").write_text(match.group(1), encoding="utf-8")
+          PY
+          node --check /tmp/podcast-list.js

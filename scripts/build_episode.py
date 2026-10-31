@@ -197,6 +197,7 @@ def main():
             "key": spec["key"],
             "show_id": spec["show_id"],
             "show": extra.get("show") or spec.get("show") or spec["show_id"],
+            "poll_url": extra.get("poll_url") or spec.get("poll_url") or "",
             "guid": spec["guid"],
             "title": report["title"],
             "episode": str(extra.get("episode") or spec.get("episode") or ""),
@@ -360,6 +361,7 @@ def main():
         duration = probe_duration(final_audio) or spec.get("duration_sec") or 0
         dump(True, False, None,
              show=show, title=title, episode=draft.get("episode") or spec.get("episode") or "",
+             poll_url=spec.get("poll_url") or meta.get("poll_url") or "",
              audio_mode=mode, dynamic_ads=bool(meta.get("dynamic_ads")),
              duration_sec=duration, speakers=speaker_names(os.path.join(wd, "speakers.json")),
              size_bytes=os.path.getsize(html), cover_file=cover_file,

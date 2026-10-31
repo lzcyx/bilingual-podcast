@@ -42,8 +42,8 @@ async def run_device(p, browser, html, name, a):
     cfg = json.loads(re.search(r'<script id="cfg" type="application/json">(.*?)</script>', src, re.S).group(1))
     cues_raw = json.loads(re.search(r'<script id="cues" type="application/json">(.*?)</script>', src, re.S).group(1).replace('<\\/', '</'))
     ncues = len(cues_raw)
-    nch = len(json.loads(re.search(r'<script id="chapters" type="application/json">(.*?)</script>', src, re.S).group(1).replace('<\\/', '</')))
-    chapters_raw = json.loads(re.search(r'<script id="chapters" type="application/json">(.*?)</script>', src, re.S).group(1).replace('<\/', '</'))
+    chapters_raw = json.loads(re.search(r'<script id="chapters" type="application/json">(.*?)</script>', src, re.S).group(1).replace('<\\/', '</'))
+    nch = len(chapters_raw)
     has_spk = any(c.get('spk') for c in cues_raw)
     m = re.search(r'<script id="speakers" type="application/json">(.*?)</script>', src, re.S)
     speakers = json.loads(m.group(1).replace('<\\/', '</')) if m else {}

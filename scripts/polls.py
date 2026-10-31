@@ -56,18 +56,23 @@ def normalize_url(value: str) -> str:
         return ''
 
 
-def _is_poll_destination(url: str) -> bool:
+def _eligible_link(url: str) -> bool:
     parts = urlsplit(url)
     hostname = (parts.hostname or '').lower()
-    path = parts.path.lower()
     if any(hostname == h or hostname.endswith('.' + h) for h in IGNORE_HOSTS):
         return False
-    if IGNORE_PATH.search(path):
+    if IGNORE_PATH.search(parts.path):
         return False
     # A generic home page is not a link to this episode's poll.
-    if path in ('', '/') and not parts.query:
+    return not (parts.path in ('', '/') and not parts.query)
+
+
+def _is_poll_destination(url: str) -> bool:
+    if not _eligible_link(url):
         return False
-    return bool(DIRECT_PATH.search(path) or any(
+    parts = urlsplit(url)
+    hostname = (parts.hostname or '').lower()
+    return bool(DIRECT_PATH.search(parts.path) or any(
         hostname == h or hostname.endswith('.' + h) for h in DIRECT_HOSTS))
 
 
@@ -82,7 +87,7 @@ def find_poll_url(*sources: str) -> str:
         parser.feed(source)
         for href, label in parser.links:
             url = normalize_url(href)
-            if not url:
+            if not url or not _eligible_link(url):
                 continue
             score = 3 if _is_poll_destination(url) else (2 if POLL_WORDS.search(label) else 0)
             if score > best[1]:
@@ -90,7 +95,7 @@ def find_poll_url(*sources: str) -> str:
         # Plain-text URLs (or Markdown-style [vote here](https://...)).
         for match in URL_RE.finditer(source):
             url = normalize_url(match.group())
-            if not url:
+            if not url or not _eligible_link(url):
                 continue
             prefix = re.sub('<[^>]*>', ' ', source[max(0, match.start() - 100):match.start()])
             score = 3 if _is_poll_destination(url) else (1 if POLL_WORDS.search(prefix) else 0)

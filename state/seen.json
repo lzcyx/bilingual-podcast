@@ -12499,6 +12499,15 @@
       "reason": "bootstrap",
       "marked_at": "2026-10-02T13:12:09.398216+00:00"
     },
+    "gamescoop\ted28b56c-d7ca-11f1-9c9f-6f7af3b4f9a0": {
+      "show_id": "gamescoop",
+      "guid": "ed28b56c-d7ca-11f1-9c9f-6f7af3b4f9a0",
+      "title": "Donkey Kong '94: Is It Still Fun Today?",
+      "pub_date": "2026-11-03T21:18:00+00:00",
+      "reason": "published",
+      "marked_at": "2026-11-04T22:39:34.404192+00:00",
+      "slug": "2026-11-04-donkey-kong-94-is-it-still-fun-today"
+    },
     "gamescoop\ted61e79a55a642faa16b5f88da07db44": {
       "show_id": "gamescoop",
       "guid": "ed61e79a55a642faa16b5f88da07db44",
@@ -23453,6 +23462,15 @@
       "pub_date": "2016-05-27T20:46:49+00:00",
       "reason": "bootstrap",
       "marked_at": "2026-10-02T13:12:09.398216+00:00"
+    },
+    "nvc\t8b34f236-d80f-11f1-83e0-3b8d153dc689": {
+      "show_id": "nvc",
+      "guid": "8b34f236-d80f-11f1-83e0-3b8d153dc689",
+      "title": "The Legend of Zelda: Ocarina of Time Review Discussion - NVC 833",
+      "pub_date": "2026-11-04T11:00:00+00:00",
+      "reason": "published",
+      "marked_at": "2026-11-04T22:39:34.404192+00:00",
+      "slug": "2026-11-04-the-legend-of-zelda-ocarina-of-time-review-discussion-nvc-833"
     },
     "nvc\t8b74eb35-4d23-4649-ab56-f9915ab5d1c6": {
       "show_id": "nvc",

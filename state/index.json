@@ -1,5 +1,27 @@
 [
   {
+    "show_id": "unlocked",
+    "guid": "5eb4a05c-d8b5-11f1-95c8-2312fcd0481c",
+    "show": "Unlocked",
+    "title": "GTA 6: It’s Time to Clear Your Hard Drive",
+    "episode": "",
+    "pub_date": "2026-11-05T14:00:00+00:00",
+    "duration_sec": 3521,
+    "audio_mode": "offline",
+    "dynamic_ads": true,
+    "html_url": "https://lzcyx.github.io/bilingual-podcast/episodes/unlocked/2026-11-05-gta-6-it-s-time-to-clear-your-hard-drive-unlocked-758.html",
+    "cover_url": "https://lzcyx.github.io/bilingual-podcast/covers/unlocked/2026-11-05-gta-6-it-s-time-to-clear-your-hard-drive-unlocked-758.jpg",
+    "size_bytes": 19060682,
+    "speakers": [
+      "Ad",
+      "Steve Downes"
+    ],
+    "revision": "5545b977a270",
+    "created_at": "2026-11-05T22:33:41.075177+00:00",
+    "archived": false,
+    "poll_url": ""
+  },
+  {
     "show_id": "nvc",
     "guid": "8b34f236-d80f-11f1-83e0-3b8d153dc689",
     "show": "Nintendo Voice Chat",

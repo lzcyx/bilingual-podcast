@@ -1,5 +1,29 @@
 [
   {
+    "show_id": "gamescoop",
+    "guid": "3dac7e2c-da43-11f1-a364-3b808cf5dc5d",
+    "show": "Game Scoop!",
+    "title": "The Zelda & Godzilla Episode",
+    "episode": "878",
+    "pub_date": "2026-11-07T01:16:00+00:00",
+    "duration_sec": 5041,
+    "audio_mode": "offline",
+    "dynamic_ads": true,
+    "html_url": "https://lzcyx.github.io/bilingual-podcast/episodes/gamescoop/2026-11-07-game-scoop-878-the-zelda-godzilla-episode.html",
+    "cover_url": "https://lzcyx.github.io/bilingual-podcast/covers/gamescoop/2026-11-07-game-scoop-878-the-zelda-godzilla-episode.jpg",
+    "size_bytes": 27280652,
+    "speakers": [
+      "Ad",
+      "Nate Ahearn",
+      "Justin Davis",
+      "S3"
+    ],
+    "revision": "264e748af19d",
+    "created_at": "2026-11-07T05:51:29.802311+00:00",
+    "archived": false,
+    "poll_url": ""
+  },
+  {
     "show_id": "consolewatch",
     "guid": "3a789ec0-d8a9-11f1-8756-7bd478ebb6eb",
     "show": "Next-Gen Console Watch",

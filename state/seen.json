@@ -8848,6 +8848,15 @@
       "reason": "bootstrap",
       "marked_at": "2026-10-02T13:12:09.398216+00:00"
     },
+    "gamescoop\t3dac7e2c-da43-11f1-a364-3b808cf5dc5d": {
+      "show_id": "gamescoop",
+      "guid": "3dac7e2c-da43-11f1-a364-3b808cf5dc5d",
+      "title": "Game Scoop! 878: The Zelda & Godzilla Episode",
+      "pub_date": "2026-11-07T01:16:00+00:00",
+      "reason": "published",
+      "marked_at": "2026-11-07T05:51:29.802311+00:00",
+      "slug": "2026-11-07-game-scoop-878-the-zelda-godzilla-episode"
+    },
     "gamescoop\t3de0186e17dccafd29684da152c2020d": {
       "show_id": "gamescoop",
       "guid": "3de0186e17dccafd29684da152c2020d",

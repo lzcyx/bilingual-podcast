@@ -7206,6 +7206,15 @@
       "reason": "bootstrap",
       "marked_at": "2026-10-02T13:12:09.398216+00:00"
     },
+    "consolewatch\ta86b4a38-de29-11f1-aa27-1f3e42b9ac97": {
+      "show_id": "consolewatch",
+      "guid": "a86b4a38-de29-11f1-aa27-1f3e42b9ac97",
+      "title": "GTA 6 Is 30fps, but We Still Have Questions - Next-Gen Console Watch",
+      "pub_date": "2026-11-13T14:00:00+00:00",
+      "reason": "published",
+      "marked_at": "2026-11-13T22:37:42.962232+00:00",
+      "slug": "2026-11-13-gta-6-is-30fps-but-we-still-have-questions-next-gen-console-watch"
+    },
     "consolewatch\tac90f3e4-55ed-11f0-8b1d-4fb239f557cf": {
       "show_id": "consolewatch",
       "guid": "ac90f3e4-55ed-11f0-8b1d-4fb239f557cf",
@@ -23649,6 +23658,15 @@
       "pub_date": "2023-07-16T03:46:52+00:00",
       "reason": "bootstrap",
       "marked_at": "2026-10-02T13:12:09.398216+00:00"
+    },
+    "nvc\t92bad91a-def6-11f1-9fae-7fb407328401": {
+      "show_id": "nvc",
+      "guid": "92bad91a-def6-11f1-9fae-7fb407328401",
+      "title": "Ocarina of Time: We Interviewed Nintendo’s Eiji Aonuma and Hidemaro Fujibayashi - NVC 834",
+      "pub_date": "2026-11-13T14:30:00+00:00",
+      "reason": "published",
+      "marked_at": "2026-11-13T22:37:42.962232+00:00",
+      "slug": "2026-11-13-ocarina-of-time-we-interviewed-nintendo-s-eiji-aonuma-and-hidemaro-fuj"
     },
     "nvc\t92e8690655fcd2e0ecd91005b9b9c44f": {
       "show_id": "nvc",

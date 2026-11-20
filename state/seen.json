@@ -6883,6 +6883,15 @@
       "reason": "bootstrap",
       "marked_at": "2026-10-02T13:12:09.398216+00:00"
     },
+    "consolewatch\t3dec1122-e47a-11f1-b22f-3f6aef40a679": {
+      "show_id": "consolewatch",
+      "guid": "3dec1122-e47a-11f1-b22f-3f6aef40a679",
+      "title": "The 6 Most Next-Gen Things About GTA 6 - Next-Gen Console Watch",
+      "pub_date": "2026-11-20T17:00:00+00:00",
+      "reason": "published",
+      "marked_at": "2026-11-20T23:01:40.471545+00:00",
+      "slug": "2026-11-21-the-6-most-next-gen-things-about-gta-6-next-gen-console-watch"
+    },
     "consolewatch\t41b8356e-c64a-11f0-8a0a-475861c732f0": {
       "show_id": "consolewatch",
       "guid": "41b8356e-c64a-11f0-8a0a-475861c732f0",
@@ -26759,6 +26768,15 @@
       "pub_date": "2026-04-24T16:45:00+00:00",
       "reason": "bootstrap",
       "marked_at": "2026-10-02T13:12:09.398216+00:00"
+    },
+    "opp\t21971d27-13f7-41c2-bb37-612f64861e57": {
+      "show_id": "opp",
+      "guid": "21971d27-13f7-41c2-bb37-612f64861e57",
+      "title": "Episode 553: Peak Gaming",
+      "pub_date": "2026-11-20T18:19:00+00:00",
+      "reason": "published",
+      "marked_at": "2026-11-20T23:01:40.471545+00:00",
+      "slug": "2026-11-21-episode-553-peak-gaming"
     },
     "opp\t246f59bd-4f26-45f4-a221-fd3c266a6531": {
       "show_id": "opp",

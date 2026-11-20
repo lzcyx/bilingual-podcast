@@ -1,5 +1,50 @@
 [
   {
+    "show_id": "opp",
+    "guid": "21971d27-13f7-41c2-bb37-612f64861e57",
+    "show": "Official PlayStation Podcast",
+    "title": "Peak Gaming",
+    "episode": "553",
+    "pub_date": "2026-11-20T18:19:00+00:00",
+    "duration_sec": 1997,
+    "audio_mode": "online",
+    "dynamic_ads": false,
+    "html_url": "https://lzcyx.github.io/bilingual-podcast/episodes/opp/2026-11-21-episode-553-peak-gaming.html",
+    "cover_url": "https://lzcyx.github.io/bilingual-podcast/covers/opp/2026-11-21-episode-553-peak-gaming.jpg",
+    "size_bytes": 181339,
+    "speakers": [
+      "Kristen Zitani",
+      "Tim Turi",
+      "S2"
+    ],
+    "revision": "aa88f3d62d10",
+    "created_at": "2026-11-20T23:01:40.471545+00:00",
+    "archived": false,
+    "poll_url": ""
+  },
+  {
+    "show_id": "consolewatch",
+    "guid": "3dec1122-e47a-11f1-b22f-3f6aef40a679",
+    "show": "Next-Gen Console Watch",
+    "title": "The 6 Most Next-Gen Things About GTA 6 - Next-Gen Console Watch",
+    "episode": "292",
+    "pub_date": "2026-11-20T17:00:00+00:00",
+    "duration_sec": 1391,
+    "audio_mode": "offline",
+    "dynamic_ads": true,
+    "html_url": "https://lzcyx.github.io/bilingual-podcast/episodes/consolewatch/2026-11-21-the-6-most-next-gen-things-about-gta-6-next-gen-console-watch.html",
+    "cover_url": "https://lzcyx.github.io/bilingual-podcast/covers/consolewatch/2026-11-21-the-6-most-next-gen-things-about-gta-6-next-gen-console-watch.jpg",
+    "size_bytes": 7668479,
+    "speakers": [
+      "Daemon Hatfield",
+      "Luke Reilly"
+    ],
+    "revision": "8fd5941a446f",
+    "created_at": "2026-11-20T23:01:40.471545+00:00",
+    "archived": false,
+    "poll_url": "https://youtube.com/playlist?list=PLraFbwCoisJCr4MBUmSxlp4TXuItuh9bZ&si=wbE4uWyfHuMmg1Rk"
+  },
+  {
     "show_id": "gamescoop",
     "guid": "aaea6334-dfaa-11f1-a6dd-437d5fb57f09",
     "show": "Game Scoop!",
